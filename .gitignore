@@ -1,0 +1,11 @@
+# Python
+__pycache__/
+*.pyc
+
+# Netlify / build
+.netlify/
+node_modules/
+
+# OS
+Thumbs.db
+.DS_Store

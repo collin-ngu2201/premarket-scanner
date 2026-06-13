@@ -1,0 +1,7 @@
+[build]
+  publish = "."
+
+[functions]
+  node_bundler = "esbuild"
+
+# Quote proxy is exposed at /api/quotes via the function's own `config.path`.
