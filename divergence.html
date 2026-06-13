@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0b0f17">
+<title>Divergence Dashboard · US Pre-Market</title>
+<style>
+  :root{
+    --bg:#0b0f17; --card:#121826; --card2:#0f1522; --border:#1f2937;
+    --txt:#e5e7eb; --muted:#8b95a7; --dim:#5b6575;
+    --green:#22c55e; --red:#ef4444; --yellow:#eab308; --blue:#3b82f6; --cyan:#22d3ee; --purple:#a78bfa;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(1200px 800px at 70% -10%,#13203a 0%,var(--bg) 55%);color:var(--txt);
+       font:14px/1.45 -apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;min-height:100vh}
+  a{color:var(--cyan);text-decoration:none}
+  header{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;
+         padding:13px 20px;border-bottom:1px solid var(--border);position:sticky;top:0;
+         background:rgba(11,15,23,.88);backdrop-filter:blur(8px);z-index:20}
+  .brand{font-size:18px;font-weight:700;letter-spacing:.3px}
+  .brand small{color:var(--muted);font-weight:400;margin-left:8px}
+  .navlink{font-size:13px;margin-left:12px}
+  .hdr-right{display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:12.5px;color:var(--muted)}
+  .pill{padding:3px 11px;border-radius:999px;border:1px solid var(--border);font-weight:700;font-size:12px}
+  .pill.pre{color:var(--cyan);border-color:rgba(34,211,238,.45);background:rgba(34,211,238,.08)}
+  .pill.regular{color:var(--green);border-color:rgba(34,197,94,.45);background:rgba(34,197,94,.08)}
+  .pill.post{color:var(--purple);border-color:rgba(167,139,250,.45);background:rgba(167,139,250,.08)}
+  .pill.closed{color:var(--muted)}
+  button{background:#1c2638;color:var(--txt);border:1px solid var(--border);border-radius:8px;padding:6px 13px;font-size:13px;cursor:pointer}
+  button:hover{background:#243047}
+  button:disabled{opacity:.5;cursor:wait}
+  .toggle{display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none}
+  input[type=number]{background:#0e1422;color:var(--txt);border:1px solid var(--border);border-radius:8px;padding:6px 8px;font-size:13px;width:92px;font-family:inherit}
+  main{max-width:1560px;margin:0 auto;padding:16px 20px 40px}
+  .controls{display:flex;flex-wrap:wrap;gap:16px 22px;align-items:flex-end;background:linear-gradient(180deg,var(--card),var(--card2));
+            border:1px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:16px}
+  .fld{display:flex;flex-direction:column;gap:4px}
+  .fld label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+  .panels{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:980px){.panels{grid-template-columns:1fr}}
+  .panel{background:linear-gradient(180deg,var(--card),var(--card2));border:1px solid var(--border);border-radius:14px;padding:14px 16px}
+  .phead{display:flex;flex-wrap:wrap;align-items:baseline;gap:10px;padding-bottom:10px;margin-bottom:8px;border-bottom:1px solid var(--border)}
+  .phead .idx{font-size:20px;font-weight:800;letter-spacing:.5px}
+  .phead .px{font-size:15px;font-variant-numeric:tabular-nums;color:var(--muted)}
+  .phead .chg{font-size:15px;font-weight:800;font-variant-numeric:tabular-nums}
+  .regime{font-size:12px;font-weight:700;padding:3px 10px;border-radius:999px;margin-left:auto}
+  .regime.up{color:#d7ffe6;background:rgba(34,197,94,.16);border:1px solid rgba(34,197,94,.4)}
+  .regime.down{color:#ffd9d9;background:rgba(239,68,68,.16);border:1px solid rgba(239,68,68,.4)}
+  .regime.flat{color:var(--muted);background:#1b2435;border:1px solid var(--border)}
+  .rule{flex-basis:100%;color:var(--dim);font-size:11.5px;margin-top:2px}
+  .up{color:var(--green)} .down{color:var(--red)} .flat{color:var(--muted)}
+  .dv-item{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:10px;align-items:center;padding:9px 4px;
+           border-bottom:1px solid rgba(31,41,55,.55)}
+  .dv-item:last-child{border-bottom:0}
+  @media(max-width:560px){.dv-item{grid-template-columns:1fr}}
+  .dv-top{display:flex;align-items:baseline;gap:8px}
+  .rank{color:var(--dim);font-size:12px;font-weight:700;min-width:24px}
+  .t-sym{font-weight:800;font-size:15px}
+  .dv-bigchg{font-weight:800;font-variant-numeric:tabular-nums;font-size:14px;margin-left:auto}
+  .dv-sub{color:var(--muted);font-size:11.5px;margin:2px 0 0 24px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .dv-stats{color:var(--dim);font-size:11.5px;margin:2px 0 0 24px;font-variant-numeric:tabular-nums}
+  .dv-stats b{color:var(--txt)}
+  .dv-chart{height:74px;background:#0c121e;border:1px solid var(--border);border-radius:8px;overflow:hidden;
+            display:flex;align-items:center;justify-content:center}
+  .dv-chart svg{width:100%;height:100%;display:block}
+  .dv-chart .lbl{position:absolute;font-size:9px;color:var(--dim);padding:2px 4px}
+  .chartwrap{position:relative;width:100%;height:100%}
+  .nochart{color:var(--dim);font-size:11px}
+  .sh{fill:rgba(255,255,255,.035)}
+  .base{stroke:var(--muted);stroke-width:.8;stroke-dasharray:3 3;opacity:.5}
+  .empty{color:var(--muted);font-size:13px;padding:18px 4px;text-align:center}
+  .spin{display:inline-block;width:13px;height:13px;border:2px solid var(--dim);border-top-color:var(--cyan);border-radius:50%;animation:sp .7s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  footer{max-width:1560px;margin:12px auto 30px;padding:0 20px;color:var(--dim);font-size:11.5px;line-height:1.7}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">🔀 Divergence Dashboard
+    <small id="univLabel">loading…</small>
+    <a class="navlink" href="index.html">← Scanner</a>
+  </div>
+  <div class="hdr-right">
+    <span id="mktState" class="pill closed">—</span>
+    <span>Updated: <b id="lastUpd" style="color:var(--txt)">—</b></span>
+    <span id="countdown"></span>
+    <label class="toggle"><input type="checkbox" id="autoRef" checked> Auto 60s</label>
+    <button id="btnRefresh">⟳ Refresh</button>
+  </div>
+</header>
+
+<main>
+  <section class="controls">
+    <div class="fld"><label>Min price · drops</label><input type="number" id="pMinDown" value="2" min="0" step="1"></div>
+    <div class="fld"><label>Min price · spikes</label><input type="number" id="pMinUp" value="25" min="0" step="1"></div>
+    <div class="fld"><label>Min volume</label><input type="number" id="volMin" value="2000000" min="0" step="100000"></div>
+    <div class="fld"><label>Top N</label><input type="number" id="topN" value="10" min="1" max="25" step="1"></div>
+    <div class="fld" style="flex:1;min-width:220px"><label>Logic</label>
+      <div style="font-size:12px;color:var(--muted)">Index <b style="color:var(--green)">up</b> → counter-trend <b style="color:var(--red)">drops</b> ·
+        Index <b style="color:var(--red)">down</b> → counter-trend <b style="color:var(--green)">spikes</b>. 5-min candles.</div>
+    </div>
+  </section>
+
+  <section class="panels">
+    <div class="panel" id="panelSPY"></div>
+    <div class="panel" id="panelQQQ"></div>
+  </section>
+</main>
+
+<footer>
+  Counter-trend = stocks moving against their index. Charts are 5-minute candles for the day (incl. pre/post,
+  dashed line = prior close; shaded = pre/post-market). Free Yahoo data; "volume" is session volume used as a
+  liquidity gate (true per-session pre-market volume needs the paid feed). Not investment advice.
+</footer>
+
+<script>
+const REFRESH_MS = 60_000;
+const BENCH = ["SPY","QQQ","DIA"];
+const PANELS = [["SPY","panelSPY"],["QQQ","panelQQQ"]];
+const CHART_INTERVAL = "5m";
+
+let UNIVERSE=[], QUOTES={}, marketState="CLOSED";
+let timer=null, nextAt=0;
+const chartCache = new Map();     // sym -> chart json (per refresh)
+const cfg = { pMinDown:2, pMinUp:25, volMin:2_000_000, topN:10 };
+
+// ---- formatting -----------------------------------------------------------
+const fmtPct=(v)=>v==null?"–":(v>=0?"+":"")+v.toFixed(2)+"%";
+const fmtPx =(v)=>v==null?"–":"$"+v.toFixed(2);
+const cls   =(v)=>v==null?"flat":v>0.0001?"up":v<-0.0001?"down":"flat";
+function fmtVol(v){ if(v==null) return "–";
+  if(v>=1e9) return (v/1e9).toFixed(2)+"B";
+  if(v>=1e6) return (v/1e6).toFixed(1)+"M";
+  if(v>=1e3) return (v/1e3).toFixed(0)+"K"; return ""+v; }
+
+// ---- active (session-aware) change ---------------------------------------
+function activeChange(q){
+  const pre  = q.preMarketChangePct  != null ? q.preMarketChangePct  : q.regChangePct;
+  const post = q.postMarketChangePct != null ? q.postMarketChangePct : q.regChangePct;
+  if (q.marketState==="PRE")  return { pct:pre,  price:q.preMarketPrice  ?? q.price };
+  if (q.marketState==="POST"||q.marketState==="POSTPOST") return { pct:post, price:q.postMarketPrice ?? q.price };
+  return { pct:q.regChangePct, price:q.price };
+}
+
+// ---- candlestick SVG ------------------------------------------------------
+function candleSVG(data){
+  const W=300,H=72,pad=4;
+  if(!data || !Array.isArray(data.candles) || data.candles.length<2) return `<div class="nochart">no chart</div>`;
+  const cs=data.candles;
+  let lo=Infinity,hi=-Infinity;
+  for(const k of cs){ if(k[3]<lo)lo=k[3]; if(k[2]>hi)hi=k[2]; }
+  if(data.prevClose!=null){ lo=Math.min(lo,data.prevClose); hi=Math.max(hi,data.prevClose); }
+  if(!(hi>lo)) hi=lo+1;
+  const iw=W-pad*2, ih=H-pad*2, n=cs.length;
+  const slot=iw/n, cw=Math.max(1, slot*0.7);
+  const cx=i=> pad + slot*(i+0.5);
+  const y =v=> pad + ih - ((v-lo)/(hi-lo))*ih;
+  let shade="";
+  if(data.regStart && data.regEnd){
+    const iReg = cs.findIndex(k=>k[0]>=data.regStart);
+    const iPost= cs.findIndex(k=>k[0]>=data.regEnd);
+    if(iReg>0)  shade+=`<rect class="sh" x="${pad}" y="${pad}" width="${cx(iReg)-pad}" height="${ih}"/>`;
+    if(iPost>0) shade+=`<rect class="sh" x="${cx(iPost)}" y="${pad}" width="${W-pad-cx(iPost)}" height="${ih}"/>`;
+  }
+  let base="";
+  if(data.prevClose!=null){ const yb=y(data.prevClose); base=`<line class="base" x1="${pad}" y1="${yb}" x2="${W-pad}" y2="${yb}"/>`; }
+  let body="";
+  for(let i=0;i<n;i++){
+    const o=cs[i][1],h=cs[i][2],l=cs[i][3],c=cs[i][4];
+    const col=c>=o?"var(--green)":"var(--red)", x=cx(i);
+    const yt=y(Math.max(o,c)), yb=y(Math.min(o,c));
+    body+=`<line x1="${x.toFixed(1)}" y1="${y(h).toFixed(1)}" x2="${x.toFixed(1)}" y2="${y(l).toFixed(1)}" stroke="${col}" stroke-width="1"/>`;
+    body+=`<rect x="${(x-cw/2).toFixed(1)}" y="${yt.toFixed(1)}" width="${cw.toFixed(1)}" height="${Math.max(0.8,yb-yt).toFixed(1)}" fill="${col}"/>`;
+  }
+  return `<div class="chartwrap"><span class="lbl">5m</span>
+    <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${shade}${base}${body}</svg></div>`;
+}
+
+// ---- panel build ----------------------------------------------------------
+function buildRows(){
+  return UNIVERSE.map(u=>{
+    const q=QUOTES[u.yahoo]; if(!q) return null;
+    const a=activeChange(q);
+    return { sym:u.symbol, yahoo:u.yahoo, name:u.name, sector:u.sector,
+             chg:a.pct, price:a.price, vol:q.regVolume };
+  }).filter(Boolean);
+}
+
+function renderPanel(idxSym, elId, rows){
+  const el=document.getElementById(elId);
+  const idxQ=QUOTES[idxSym];
+  if(!idxQ){ el.innerHTML=`<div class="empty">${idxSym} unavailable</div>`; return []; }
+  const idxChg=activeChange(idxQ).pct ?? 0;
+  const idxPx =activeChange(idxQ).price;
+  const flat=Math.abs(idxChg)<0.05;
+  const up = idxChg>0;
+
+  // regime + filter
+  let regimeCls, regimeTxt, ruleTxt, pool, sortFn;
+  if(up){
+    regimeCls="up"; regimeTxt="Market UP → counter-trend DROPS";
+    ruleTxt=`stock red · price > $${cfg.pMinDown} · vol > ${fmtVol(cfg.volMin)}`;
+    pool=rows.filter(r=>r.chg!=null && r.chg<0 && (r.price??0)>cfg.pMinDown && (r.vol??0)>cfg.volMin);
+    sortFn=(a,b)=>a.chg-b.chg;            // most negative first (biggest drop)
+  } else {
+    regimeCls="down"; regimeTxt="Market DOWN → counter-trend SPIKES";
+    ruleTxt=`stock green · price > $${cfg.pMinUp} · vol > ${fmtVol(cfg.volMin)}`;
+    pool=rows.filter(r=>r.chg!=null && r.chg>0 && (r.price??0)>cfg.pMinUp && (r.vol??0)>cfg.volMin);
+    sortFn=(a,b)=>b.chg-a.chg;            // most positive first (biggest hike)
+  }
+  if(flat){ regimeCls="flat"; regimeTxt=`${idxSym} ~flat — showing ${up?"drops":"spikes"} rule`; }
+  const top=pool.sort(sortFn).slice(0,cfg.topN);
+
+  const head=`<div class="phead">
+    <span class="idx">${idxSym}</span>
+    <span class="px">${fmtPx(idxPx)}</span>
+    <span class="chg ${cls(idxChg)}">${fmtPct(idxChg)}</span>
+    <span class="regime ${regimeCls}">${regimeTxt}</span>
+    <span class="rule">${ruleTxt}</span></div>`;
+
+  const items = top.length ? top.map((r,i)=>{
+    const dev=r.chg-idxChg;
+    return `<div class="dv-item">
+      <div>
+        <div class="dv-top"><span class="rank">#${i+1}</span><span class="t-sym">${r.sym}</span>
+          <span class="dv-bigchg ${cls(r.chg)}">${fmtPct(r.chg)}</span></div>
+        <div class="dv-sub" title="${r.name}">${r.name} · ${r.sector}</div>
+        <div class="dv-stats"><b>${fmtPx(r.price)}</b> · ${fmtVol(r.vol)} vol · dev <b class="${cls(dev)}">${fmtPct(dev)}</b> vs ${idxSym}</div>
+      </div>
+      <div class="dv-chart" data-sym="${r.yahoo}"><span class="spin"></span></div>
+    </div>`;
+  }).join("") : `<div class="empty">No counter-trend names meet the rule right now.</div>`;
+
+  el.innerHTML = head + items;
+  return top.map(r=>r.yahoo);
+}
+
+// ---- charts ---------------------------------------------------------------
+async function loadCharts(symbols){
+  await Promise.all([...new Set(symbols)].map(async sym=>{
+    let data = chartCache.get(sym);
+    if(!data){
+      try{
+        const r=await fetch(`/api/chart?symbol=${encodeURIComponent(sym)}&interval=${CHART_INTERVAL}&range=1d`);
+        data = r.ok ? await r.json() : null;
+      }catch{ data=null; }
+      if(data && !data.error) chartCache.set(sym,data); else data=null;
+    }
+    document.querySelectorAll(`.dv-chart[data-sym="${CSS.escape(sym)}"]`).forEach(slot=>{
+      slot.innerHTML = data ? candleSVG(data) : `<div class="nochart">chart n/a</div>`;
+    });
+  }));
+}
+
+// ---- state badge ----------------------------------------------------------
+function renderState(){
+  const el=document.getElementById("mktState");
+  const map={PRE:["pre","🌅 PRE-MARKET"],REGULAR:["regular","🟢 OPEN"],POST:["post","🌆 POST-MARKET"],
+             POSTPOST:["post","🌆 POST-MARKET"],CLOSED:["closed","🔒 CLOSED"]};
+  const [c,t]=map[marketState]||["closed",marketState];
+  el.className="pill "+c; el.textContent=t;
+}
+
+// ---- main refresh ---------------------------------------------------------
+async function refresh(){
+  const btn=document.getElementById("btnRefresh");
+  btn.disabled=true; btn.innerHTML='<span class="spin"></span> Loading';
+  try{
+    const symbols=[...new Set([...UNIVERSE.map(u=>u.yahoo),...BENCH])];
+    let data, demo=false;
+    try{
+      const r=await fetch("/api/quotes",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({symbols})});
+      if(!r.ok){ const e=await r.json().catch(()=>({})); throw new Error(e.error||("HTTP "+r.status)); }
+      data=await r.json();
+    }catch(apiErr){
+      const r2=await fetch("sample_quotes.json",{cache:"no-store"});
+      if(!r2.ok) throw apiErr;
+      data=await r2.json(); demo=true;
+    }
+    QUOTES={}; for(const q of data.quotes) QUOTES[q.symbol]=q;
+    marketState=QUOTES["SPY"]?.marketState||QUOTES["QQQ"]?.marketState||"CLOSED";
+    document.getElementById("lastUpd").textContent =
+      demo ? new Date(data.asOf).toLocaleString()+" · snapshot" : new Date().toLocaleTimeString();
+    document.getElementById("lastUpd").style.color = demo?"var(--yellow)":"var(--txt)";
+
+    chartCache.clear();
+    renderState();
+    const rows=buildRows();
+    let syms=[];
+    for(const [idx,elId] of PANELS) syms=syms.concat(renderPanel(idx,elId,rows));
+    loadCharts(syms);    // async — fills chart slots as they arrive
+  }catch(e){
+    for(const [,elId] of PANELS) document.getElementById(elId).innerHTML=`<div class="empty">⚠ ${e.message}</div>`;
+  }finally{
+    btn.disabled=false; btn.innerHTML="⟳ Refresh"; scheduleNext();
+  }
+}
+function scheduleNext(){
+  clearTimeout(timer);
+  if(document.getElementById("autoRef").checked){ nextAt=Date.now()+REFRESH_MS; timer=setTimeout(refresh,REFRESH_MS); }
+  else nextAt=0;
+}
+function tickCountdown(){
+  const el=document.getElementById("countdown");
+  if(!nextAt){ el.textContent=""; return; }
+  el.textContent="next in "+Math.max(0,Math.round((nextAt-Date.now())/1000))+"s";
+}
+
+// ---- config inputs --------------------------------------------------------
+function bindCfg(){
+  const map={pMinDown:"pMinDown",pMinUp:"pMinUp",volMin:"volMin",topN:"topN"};
+  for(const [k,id] of Object.entries(map)){
+    const el=document.getElementById(id);
+    el.onchange=()=>{ cfg[k]=Number(el.value)||0;
+      const rows=buildRows(); let syms=[];
+      for(const [idx,elId] of PANELS) syms=syms.concat(renderPanel(idx,elId,rows));
+      loadCharts(syms);
+    };
+  }
+}
+
+// ---- boot -----------------------------------------------------------------
+async function init(){
+  document.getElementById("btnRefresh").onclick=refresh;
+  document.getElementById("autoRef").onchange=scheduleNext;
+  try{
+    const u=await(await fetch("universe.json")).json();
+    UNIVERSE=u.constituents;
+    document.getElementById("univLabel").textContent=`${u.source} · ${u.count} names`;
+  }catch(e){
+    document.getElementById("panelSPY").innerHTML=`<div class="empty">⚠ universe.json: ${e.message}</div>`;
+    return;
+  }
+  bindCfg();
+  setInterval(tickCountdown,1000);
+  refresh();
+}
+init();
+</script>
+</body>
+</html>
