@@ -25,6 +25,7 @@ const YAHOO_FIELDS = [
 ].join(",");
 
 const BATCH = 100;          // symbols per Yahoo call (well under its cap)
+const CONCURRENCY = 8;      // batches fetched in parallel (keeps ~1500 names < timeout)
 const AUTH_TTL = 25 * 60e3; // re-auth every 25 min
 
 // Cached across warm invocations so we don't re-auth on every request.
@@ -94,26 +95,43 @@ function normalizeYahoo(q) {
 
 const num = (v) => (typeof v === "number" && isFinite(v) ? v : null);
 
-async function yahooQuotes(symbols) {
-  const out = [];
-  for (const group of chunk(symbols, BATCH)) {
-    let auth = await getYahooAuth();
-    const build = (a) =>
-      `https://query1.finance.yahoo.com/v7/finance/quote` +
-      `?symbols=${encodeURIComponent(group.join(","))}` +
-      `&fields=${YAHOO_FIELDS}&crumb=${encodeURIComponent(a.crumb)}`;
+// Run async fn over items with a bounded number of in-flight calls.
+async function mapLimit(items, limit, fn) {
+  const results = new Array(items.length);
+  let next = 0;
+  await Promise.all(
+    Array.from({ length: Math.min(limit, items.length) }, async () => {
+      while (next < items.length) {
+        const i = next++;
+        results[i] = await fn(items[i]);
+      }
+    })
+  );
+  return results;
+}
 
-    let r = await fetch(build(auth), { headers: { "User-Agent": UA, Cookie: auth.cookie } });
-    if (r.status === 401 || r.status === 403) {
-      auth = await getYahooAuth(true); // crumb likely expired — re-auth once
-      r = await fetch(build(auth), { headers: { "User-Agent": UA, Cookie: auth.cookie } });
-    }
-    if (!r.ok) throw new Error(`Yahoo upstream ${r.status}`);
-    const data = await r.json();
-    const res = data?.quoteResponse?.result || [];
-    for (const q of res) out.push(normalizeYahoo(q));
+async function fetchBatch(group) {
+  const build = (a) =>
+    `https://query1.finance.yahoo.com/v7/finance/quote` +
+    `?symbols=${encodeURIComponent(group.join(","))}` +
+    `&fields=${YAHOO_FIELDS}&crumb=${encodeURIComponent(a.crumb)}`;
+
+  let auth = await getYahooAuth();
+  let r = await fetch(build(auth), { headers: { "User-Agent": UA, Cookie: auth.cookie } });
+  if (r.status === 401 || r.status === 403) {
+    auth = await getYahooAuth(true); // crumb likely expired — re-auth once
+    r = await fetch(build(auth), { headers: { "User-Agent": UA, Cookie: auth.cookie } });
   }
-  return out;
+  if (!r.ok) throw new Error(`Yahoo upstream ${r.status}`);
+  const data = await r.json();
+  return (data?.quoteResponse?.result || []).map(normalizeYahoo);
+}
+
+async function yahooQuotes(symbols) {
+  const groups = chunk(symbols, BATCH);
+  await getYahooAuth();              // warm crumb once so workers share it
+  const batches = await mapLimit(groups, CONCURRENCY, fetchBatch);
+  return batches.flat();
 }
 
 // ---- Polygon stub (the upgrade path) ------------------------------------

@@ -1,8 +1,9 @@
 # US Pre-Market Scanner
 
-A standalone web app that scans the S&P 500 for pre-market movers and lets you
-filter by volume, market cap, sector, gainers/losers, and deviation from the
-main indexes (SPY / QQQ). Built to mirror the deploy pattern of the sibling
+A standalone web app that scans the **S&P Composite 1500** (S&P 500 + 400 + 600,
+~1,500 large/mid/small-cap names) for pre-market movers and lets you filter by
+volume, market cap, sector, gainers/losers, and deviation from the main indexes
+(SPY / QQQ). Built to mirror the deploy pattern of the sibling
 `market-dashboard` (Netlify static site + serverless function).
 
 ## What it does
@@ -24,7 +25,7 @@ your evening. When the market is closed the app shows the last regular session.
 
 ```
 index.html                     SPA: universe load, scan math, filters, table (vanilla JS)
-universe.json                  S&P 500 constituents + GICS sector (503 names)
+universe.json                  S&P 1500 constituents + GICS sector (~1,500 names)
 sample_quotes.json             snapshot fallback (written by tools/probe.py)
 netlify/functions/quotes.mjs   batched quote proxy → /api/quotes
 tools/probe.py                 local validator + snapshot generator (no Node needed)
@@ -83,6 +84,8 @@ Netlify, same as `market-dashboard`.
 python tools/gen_universe.py   # (the script used to build universe.json)
 ```
 
-Re-run periodically to pick up S&P 500 add/drops. To widen coverage (Nasdaq-100,
-Russell 1000), append entries to `universe.json` with `symbol`, `yahoo` (dots→
-dashes, e.g. `BRK.B`→`BRK-B`), `name`, and `sector`.
+Pulls the S&P 500 / 400 / 600 constituent tables (GICS sectors) from Wikipedia
+and merges them. Re-run periodically to pick up index add/drops. To widen
+further, append entries to `universe.json` with `symbol`, `yahoo` (dots→dashes,
+e.g. `BRK.B`→`BRK-B`), `name`, and `sector`. The function fetches quotes in
+parallel batches, so ~1,500 names stay well within the Netlify timeout.
