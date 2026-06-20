@@ -1,0 +1,38 @@
+name: options-scan
+
+# Refresh the options screener snapshot (scan_results.json) and accrue IV history.
+# Runs on weekdays ~pre-open and ~near-close (UTC); also triggerable by hand.
+# The commit push fires the Netlify build hook, so the live dashboard updates.
+on:
+  schedule:
+    - cron: "0 13,20 * * 1-5"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: options-scan
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Run options scan
+        run: python tools/scan_options.py --workers 6
+      - name: Commit snapshot if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add scan_results.json iv_history.json
+          if git diff --staged --quiet; then
+            echo "no changes"
+          else
+            git commit -m "Update options scan snapshot [skip ci]"
+            git push
+          fi
