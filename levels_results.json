@@ -1,5 +1,5 @@
 {
-"asOf": "2026-07-02T20:59:18.139204+00:00",
+"asOf": "2026-07-03T15:06:56.222260+00:00",
 "universe": "S&P Composite 1500 (S&P 500+400+600, Wikipedia/GICS)",
 "scanned": 1506,
 "params": {
@@ -5904,35 +5904,33 @@
 {
 "yahoo": "PRA",
 "price": 25.0,
-"sma50": 24.62,
+"sma50": 24.63,
 "sma200": 24.32,
-"d200": 0.0273,
-"dSup": 0.0151,
+"d200": 0.0271,
+"dSup": 0.0149,
 "dFib": 0.012,
-"supLevel": 24.62,
+"supLevel": 24.63,
 "supKind": "50MA",
 "supLines": [
 23.68,
 24.04,
-24.62
+24.63
 ],
 "fibLevel": 24.7,
 "fibRatio": 0.236,
 "fibSwing": "rec",
 "fibLines": [
-23.28,
-23.65,
-23.91,
+23.31,
+23.67,
+23.93,
 23.97,
-24.17,
 24.19,
 24.35,
-24.5,
 24.51,
 24.7
 ],
 "hi52": 25.02,
-"lo52": 22.8,
+"lo52": 22.84,
 "aboveMA": true,
 "conf3": 3,
 "symbol": "PRA",
@@ -6980,38 +6978,6 @@
 "symbol": "MCD",
 "name": "McDonald's",
 "sector": "Consumer Discretionary"
-},
-{
-"yahoo": "SATS",
-"price": 100.92,
-"sma50": 120.37,
-"sma200": 103.83,
-"d200": -0.0288,
-"dSup": 0.036,
-"dFib": 0.0003,
-"supLevel": 104.55,
-"supKind": "swing",
-"supLines": [
-94.62,
-104.55,
-106.6
-],
-"fibLevel": 100.95,
-"fibRatio": 0.382,
-"fibSwing": "52w",
-"fibLines": [
-86.65,
-100.95,
-105.89,
-114.73
-],
-"hi52": 147.25,
-"lo52": 26.04,
-"aboveMA": false,
-"conf3": 2,
-"symbol": "SATS",
-"name": "EchoStar",
-"sector": "Communication Services"
 },
 {
 "yahoo": "STZ",
@@ -13093,6 +13059,45 @@
 "sector": "Information Technology"
 },
 {
+"yahoo": "JHG",
+"price": 51.95,
+"sma50": 51.75,
+"sma200": 48.23,
+"d200": 0.0717,
+"dSup": 0.0039,
+"dFib": 0.0065,
+"supLevel": 51.75,
+"supKind": "50MA",
+"supLines": [
+47.56,
+50.02,
+51.7,
+51.71,
+51.75
+],
+"fibLevel": 52.29,
+"fibRatio": 0.236,
+"fibSwing": "rec",
+"fibLines": [
+44.44,
+46.22,
+48.0,
+48.87,
+49.92,
+50.2,
+50.65,
+51.38,
+52.29
+],
+"hi52": 53.76,
+"lo52": 38.67,
+"aboveMA": true,
+"conf3": 2,
+"symbol": "JHG",
+"name": "Janus Henderson",
+"sector": "Financials"
+},
+{
 "yahoo": "PARR",
 "price": 58.49,
 "sma50": 58.72,
@@ -13428,45 +13433,6 @@
 "symbol": "INVA",
 "name": "Innoviva, Inc.",
 "sector": "Health Care"
-},
-{
-"yahoo": "JHG",
-"price": 51.95,
-"sma50": 51.74,
-"sma200": 48.19,
-"d200": 0.0724,
-"dSup": 0.004,
-"dFib": 0.0065,
-"supLevel": 51.74,
-"supKind": "50MA",
-"supLines": [
-47.56,
-50.02,
-51.7,
-51.71,
-51.74
-],
-"fibLevel": 52.29,
-"fibRatio": 0.236,
-"fibSwing": "rec",
-"fibLines": [
-44.28,
-46.09,
-47.9,
-48.87,
-49.92,
-50.14,
-50.65,
-51.38,
-52.29
-],
-"hi52": 53.76,
-"lo52": 38.42,
-"aboveMA": true,
-"conf3": 2,
-"symbol": "JHG",
-"name": "Janus Henderson",
-"sector": "Financials"
 },
 {
 "yahoo": "PMT",
@@ -15350,6 +15316,39 @@
 "sector": "Information Technology"
 },
 {
+"yahoo": "SATS",
+"price": 101.49,
+"sma50": 119.92,
+"sma200": 103.97,
+"d200": -0.0245,
+"dSup": 0.0302,
+"dFib": 0.0053,
+"supLevel": 104.55,
+"supKind": "swing",
+"supLines": [
+94.62,
+104.55,
+106.6,
+116.32
+],
+"fibLevel": 100.95,
+"fibRatio": 0.382,
+"fibSwing": "52w",
+"fibLines": [
+86.65,
+100.95,
+105.89,
+114.73
+],
+"hi52": 147.25,
+"lo52": 26.04,
+"aboveMA": false,
+"conf3": 2,
+"symbol": "SATS",
+"name": "EchoStar",
+"sector": "Communication Services"
+},
+{
 "yahoo": "BANR",
 "price": 67.17,
 "sma50": 65.51,
@@ -16963,6 +16962,39 @@
 "sector": "Consumer Discretionary"
 },
 {
+"yahoo": "FLEX",
+"price": 136.86,
+"sma50": 134.88,
+"sma200": 81.5,
+"d200": 0.4045,
+"dSup": 0.0067,
+"dFib": 0.014,
+"supLevel": 137.78,
+"supKind": "swing",
+"supLines": [
+121.3,
+127.09,
+134.88,
+137.78
+],
+"fibLevel": 138.77,
+"fibRatio": 0.236,
+"fibSwing": "52w",
+"fibLines": [
+121.39,
+124.19,
+138.77,
+140.5
+],
+"hi52": 166.86,
+"lo52": 47.83,
+"aboveMA": true,
+"conf3": 2,
+"symbol": "FLEX",
+"name": "Flex Ltd.",
+"sector": "Information Technology"
+},
+{
 "yahoo": "IVZ",
 "price": 27.01,
 "sma50": 27.19,
@@ -17066,39 +17098,6 @@
 "conf3": 2,
 "symbol": "ENTG",
 "name": "Entegris",
-"sector": "Information Technology"
-},
-{
-"yahoo": "FLEX",
-"price": 136.85,
-"sma50": 134.88,
-"sma200": 81.5,
-"d200": 0.4045,
-"dSup": 0.0068,
-"dFib": 0.014,
-"supLevel": 137.78,
-"supKind": "swing",
-"supLines": [
-121.3,
-127.09,
-134.88,
-137.78
-],
-"fibLevel": 138.77,
-"fibRatio": 0.236,
-"fibSwing": "52w",
-"fibLines": [
-121.39,
-124.19,
-138.77,
-140.5
-],
-"hi52": 166.86,
-"lo52": 47.83,
-"aboveMA": true,
-"conf3": 2,
-"symbol": "FLEX",
-"name": "Flex Ltd.",
 "sector": "Information Technology"
 },
 {
@@ -21530,9 +21529,9 @@
 "fibRatio": 0.382,
 "fibSwing": "52w",
 "fibLines": [
-59.56,
+59.57,
 61.03,
-61.88,
+61.89,
 64.53,
 64.76,
 68.02,
@@ -22328,10 +22327,10 @@
 198.42,
 205.17,
 205.66,
-210.74,
-215.82,
+210.75,
+215.84,
 217.71,
-222.11,
+222.13,
 226.51,
 235.32,
 246.22
