@@ -1,5 +1,5 @@
 {
-"asOf": "2026-08-10T20:35:12.668445+00:00",
+"asOf": "2026-08-11T10:14:36.435464+00:00",
 "universe": "S&P Composite 1500 (S&P 500+400+600, Wikipedia/GICS)",
 "scanned": 1506,
 "params": {
@@ -10095,41 +10095,6 @@
 "sector": "Materials"
 },
 {
-"yahoo": "MNST",
-"price": 91.43,
-"sma50": 91.53,
-"sma200": 79.32,
-"d200": 0.1324,
-"dSup": 0.0011,
-"dFib": 0.0116,
-"supLevel": 91.53,
-"supKind": "50MA",
-"supLines": [
-79.53,
-87.91,
-91.53
-],
-"fibLevel": 90.37,
-"fibRatio": 0.236,
-"fibSwing": "52w",
-"fibLines": [
-79.21,
-82.12,
-84.2,
-85.6,
-89.08,
-90.37,
-93.38
-],
-"hi52": 100.34,
-"lo52": 58.09,
-"aboveMA": true,
-"conf3": 2,
-"symbol": "MNST",
-"name": "Monster Beverage",
-"sector": "Consumer Staples"
-},
-{
 "yahoo": "MSFT",
 "price": 506.06,
 "sma50": 408.59,
@@ -16517,7 +16482,7 @@
 },
 {
 "yahoo": "ADI",
-"price": 383.92,
+"price": 383.93,
 "sma50": 394.31,
 "sma200": 335.34,
 "d200": 0.1266,
@@ -16749,6 +16714,42 @@
 "sector": "Information Technology"
 },
 {
+"yahoo": "MNST",
+"price": 45.72,
+"sma50": 47.07,
+"sma200": 40.65,
+"d200": 0.1108,
+"dSup": 0.0109,
+"dFib": 0.0043,
+"supLevel": 46.22,
+"supKind": "consol",
+"supLines": [
+39.76,
+46.22,
+47.07,
+47.37
+],
+"fibLevel": 45.52,
+"fibRatio": 0.236,
+"fibSwing": "52w",
+"fibLines": [
+40.33,
+41.06,
+42.65,
+42.8,
+44.54,
+45.52,
+46.69
+],
+"hi52": 50.17,
+"lo52": 30.49,
+"aboveMA": true,
+"conf3": 2,
+"symbol": "MNST",
+"name": "Monster Beverage",
+"sector": "Consumer Staples"
+},
+{
 "yahoo": "WEC",
 "price": 106.12,
 "sma50": 113.17,
@@ -16814,14 +16815,14 @@
 "fibLines": [
 37.21,
 38.56,
-39.1,
+39.08,
 39.5,
-40.04,
+40.03,
 40.44,
-40.7,
-41.36,
+40.69,
+41.35,
 41.61,
-42.18
+42.17
 ],
 "hi52": 43.5,
 "lo52": 35.5,
@@ -18570,6 +18571,45 @@
 "sector": "Financials"
 },
 {
+"yahoo": "HTO",
+"price": 61.25,
+"sma50": 60.5,
+"sma200": 55.05,
+"d200": 0.1012,
+"dSup": 0.0122,
+"dFib": 0.0054,
+"supLevel": 60.5,
+"supKind": "50MA",
+"supLines": [
+52.91,
+55.73,
+56.84,
+59.94,
+60.5
+],
+"fibLevel": 61.58,
+"fibRatio": 0.236,
+"fibSwing": "52w",
+"fibLines": [
+52.67,
+54.36,
+55.42,
+57.08,
+58.17,
+58.99,
+60.91,
+61.58,
+63.27
+],
+"hi52": 67.09,
+"lo52": 43.75,
+"aboveMA": true,
+"conf3": 2,
+"symbol": "HTO",
+"name": "H2O America",
+"sector": "Utilities"
+},
+{
 "yahoo": "TREX",
 "price": 48.17,
 "sma50": 45.37,
@@ -18640,45 +18680,6 @@
 "symbol": "BROS",
 "name": "Dutch Bros Inc.",
 "sector": "Consumer Discretionary"
-},
-{
-"yahoo": "HTO",
-"price": 61.24,
-"sma50": 60.5,
-"sma200": 55.05,
-"d200": 0.1011,
-"dSup": 0.0121,
-"dFib": 0.0055,
-"supLevel": 60.5,
-"supKind": "50MA",
-"supLines": [
-52.91,
-55.73,
-56.84,
-59.94,
-60.5
-],
-"fibLevel": 60.91,
-"fibRatio": 0.382,
-"fibSwing": "rec",
-"fibLines": [
-52.67,
-54.36,
-55.42,
-57.08,
-58.17,
-58.99,
-60.91,
-61.58,
-63.27
-],
-"hi52": 67.09,
-"lo52": 43.75,
-"aboveMA": true,
-"conf3": 2,
-"symbol": "HTO",
-"name": "H2O America",
-"sector": "Utilities"
 },
 {
 "yahoo": "IDCC",
@@ -23014,9 +23015,9 @@
 "fibSwing": "52w",
 "fibLines": [
 66.76,
-72.22,
+71.69,
 73.07,
-77.37,
+76.95,
 77.5
 ],
 "hi52": 96.28,
