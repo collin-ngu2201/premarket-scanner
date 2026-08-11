@@ -4,8 +4,11 @@ name: options-scan
 # Runs on weekdays ~pre-open and ~near-close (UTC); also triggerable by hand.
 # The commit push fires the Netlify build hook, so the live dashboard updates.
 on:
+  # Run during US market hours (15:00 & 19:00 UTC = 11am & 3pm ET) so the
+  # options chain has live bid/ask/OI. Pre-market runs are guarded in the
+  # script (option quotes are 0 then) and won't overwrite good data.
   schedule:
-    - cron: "0 13,20 * * 1-5"
+    - cron: "0 15,19 * * 1-5"
   workflow_dispatch:
 
 permissions:

@@ -189,7 +189,7 @@ def option_metrics(yh, spot, cookie):
 
 # --------------------------------------------------------------------------- bulk quotes
 QFIELDS = ("symbol,shortName,regularMarketPrice,marketCap,regularMarketVolume,"
-           "earningsTimestamp,earningsTimestampStart")
+           "marketState,earningsTimestamp,earningsTimestampStart")
 def bulk_quotes(yahoos, cookie):
     out = {}
     for i in range(0, len(yahoos), 100):
@@ -229,6 +229,16 @@ def main():
         if isinstance(px, (int, float)) and px >= PRICE_FLOOR:
             priced.append(yh)
     print(f"price >= ${PRICE_FLOOR}: {len(priced)}", flush=True)
+
+    # Options only quote during US RTH (09:30-16:00 ET). Outside it (esp. PRE),
+    # Yahoo returns bid/ask/OI = 0, which would produce an empty screener and
+    # clobber the last good snapshot. Bail early and keep the previous file.
+    states = [q.get("marketState") for q in quotes.values() if q.get("marketState")]
+    mstate = max(set(states), key=states.count) if states else "UNKNOWN"
+    print(f"marketState: {mstate}", flush=True)
+    if mstate in ("PRE", "PREPRE"):
+        print("Pre-market: option quotes are 0 -> skipping options scan (keeping last snapshot)", flush=True)
+        return
 
     # daily indicators -> uptrend filter
     daily = {}
@@ -288,6 +298,13 @@ def main():
             "earnDate": (datetime.utcfromtimestamp(ets).strftime("%Y-%m-%d") if isinstance(ets, (int, float)) else None),
             "marketCap": q.get("marketCap"),
         })
+
+    # Belt-and-suspenders: a healthy RTH scan yields many candidates from a large
+    # uptrend set. If it comes back nearly empty, treat the options data as
+    # degraded and keep the previous snapshot rather than clobbering it.
+    if len(uptrend) >= 50 and len(results) < 10:
+        print(f"Degraded: only {len(results)} candidates from {len(uptrend)} uptrend -> keeping last snapshot", flush=True)
+        return
 
     results.sort(key=lambda r: r["annPct"], reverse=True)
     json.dump(hist, open(hist_path, "w"))
