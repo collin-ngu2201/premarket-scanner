@@ -119,6 +119,17 @@ const cfg={iv:50,rsi:60,price:10,earn:30,earnOnly:false,sort:"annPct"};
 const chartCache=new Map();
 let observer=null;
 
+// Snapshots are refreshed by the scheduled scan straight into the repo, so we
+// read them from GitHub raw (always current) and fall back to the deployed copy.
+// This keeps data fresh even if a Netlify redeploy is delayed.
+const RAW="https://raw.githubusercontent.com/collin-ngu2201/premarket-scanner/main/";
+async function loadSnapshot(file){
+  for(const url of [RAW+file+"?t="+Date.now(), file]){
+    try{ const r=await fetch(url,{cache:"no-store"}); if(r.ok) return await r.json(); }catch(_){}
+  }
+  throw new Error(file+" unavailable");
+}
+
 const fpct=(v)=>v==null?"–":v.toFixed(1)+"%";
 const fpx =(v)=>v==null?"–":"$"+(v>=1000?v.toFixed(0):v.toFixed(2));
 
@@ -256,9 +267,7 @@ function renderMeta(){
 async function load(){
   const wrap=document.getElementById("cards");
   try{
-    const r=await fetch("scan_results.json",{cache:"no-store"});
-    if(!r.ok) throw new Error("scan_results.json "+r.status);
-    DATA=await r.json();
+    DATA=await loadSnapshot("scan_results.json");
     renderMeta(); render();
   }catch(e){ wrap.innerHTML=`<div class="empty">⚠ ${e.message}<br><small>The scan snapshot is produced by the scheduled job (tools/scan_options.py).</small></div>`; }
 }
