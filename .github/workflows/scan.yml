@@ -27,7 +27,9 @@ jobs:
         run: python tools/scan_options.py --workers 6
       - name: Run levels scan
         run: python tools/scan_levels.py --workers 8
-      - name: Commit snapshots if changed
+      - name: Commit snapshots and trigger deploy
+        env:
+          NETLIFY_BUILD_HOOK: ${{ secrets.NETLIFY_BUILD_HOOK }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -35,6 +37,12 @@ jobs:
           if git diff --staged --quiet; then
             echo "no changes"
           else
-            git commit -m "Update scan snapshots [skip ci]"
+            git commit -m "Update scan snapshots"
             git push
+            # Explicitly trigger the Netlify build so the live site updates.
+            # (Netlify skips builds for git events tagged [skip ci], and the
+            # push webhook can go stale — a direct build-hook POST is reliable.)
+            if [ -n "$NETLIFY_BUILD_HOOK" ]; then
+              curl -fsS -X POST -d '{}' "$NETLIFY_BUILD_HOOK" && echo "Netlify deploy triggered"
+            fi
           fi
