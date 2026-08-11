@@ -1,4 +1,4 @@
-// Batched market-quote proxy for the pre-market scanner.
+// Batched market-quote proxy for the pre-market scanner (Vercel function).
 //
 // Free provider  = Yahoo Finance (keyless; handles the cookie + crumb dance and
 //                  CORS that a browser can't do directly).
@@ -143,46 +143,36 @@ async function polygonQuotes(/* symbols */) {
   throw new Error("Polygon provider not implemented yet — set provider=yahoo");
 }
 
-export default async (req) => {
-  const url = new URL(req.url);
-  const provider = url.searchParams.get("provider") || "yahoo";
+function send(res, status, obj, cache = "no-store") {
+  res.setHeader("content-type", "application/json");
+  res.setHeader("cache-control", cache);
+  res.status(status).send(JSON.stringify(obj));
+}
+
+export default async function handler(req, res) {
+  const provider = (req.query?.provider ? String(req.query.provider) : "yahoo") || "yahoo";
 
   let symbols = [];
   if (req.method === "POST") {
-    try {
-      const body = await req.json();
-      symbols = Array.isArray(body?.symbols) ? body.symbols : [];
-    } catch {
-      return json({ error: "bad JSON body" }, 400);
-    }
+    let body = req.body;
+    if (typeof body === "string") { try { body = JSON.parse(body); } catch { body = {}; } }
+    symbols = Array.isArray(body?.symbols) ? body.symbols : [];
   } else {
-    symbols = (url.searchParams.get("symbols") || "")
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
+    symbols = String(req.query?.symbols || "").split(",").map((s) => s.trim()).filter(Boolean);
   }
 
   symbols = [...new Set(symbols)].slice(0, 2000);
-  if (!symbols.length) return json({ error: "no symbols" }, 400);
+  if (!symbols.length) return send(res, 400, { error: "no symbols" });
 
   try {
     const quotes =
       provider === "polygon" ? await polygonQuotes(symbols) : await yahooQuotes(symbols);
-    return json(
+    return send(
+      res, 200,
       { provider, count: quotes.length, asOf: new Date().toISOString(), quotes },
-      200,
       provider === "yahoo" ? "public, max-age=20" : "no-store"
     );
   } catch (e) {
-    return json({ error: String(e.message || e), provider }, 502);
+    return send(res, 502, { error: String(e.message || e), provider });
   }
-};
-
-function json(obj, status = 200, cache = "no-store") {
-  return new Response(JSON.stringify(obj), {
-    status,
-    headers: { "content-type": "application/json", "cache-control": cache },
-  });
 }
-
-export const config = { path: "/api/quotes" };

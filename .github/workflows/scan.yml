@@ -1,8 +1,9 @@
 name: options-scan
 
-# Refresh the options screener snapshot (scan_results.json) and accrue IV history.
-# Runs on weekdays ~pre-open and ~near-close (UTC); also triggerable by hand.
-# The commit push fires the Netlify build hook, so the live dashboard updates.
+# Refresh the options + levels snapshots and accrue IV history.
+# Runs on weekdays during US market hours (UTC); also triggerable by hand.
+# The commit push auto-deploys on Vercel; the dashboards also read the snapshots
+# straight from GitHub raw, so data is fresh regardless of deploy timing.
 on:
   # Run during US market hours (15:00 & 19:00 UTC = 11am & 3pm ET) so the
   # options chain has live bid/ask/OI. Pre-market runs are guarded in the
@@ -30,9 +31,7 @@ jobs:
         run: python tools/scan_options.py --workers 6
       - name: Run levels scan
         run: python tools/scan_levels.py --workers 8
-      - name: Commit snapshots and trigger deploy
-        env:
-          NETLIFY_BUILD_HOOK: ${{ secrets.NETLIFY_BUILD_HOOK }}
+      - name: Commit snapshots
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -42,10 +41,4 @@ jobs:
           else
             git commit -m "Update scan snapshots"
             git push
-            # Explicitly trigger the Netlify build so the live site updates.
-            # (Netlify skips builds for git events tagged [skip ci], and the
-            # push webhook can go stale — a direct build-hook POST is reliable.)
-            if [ -n "$NETLIFY_BUILD_HOOK" ]; then
-              curl -fsS -X POST -d '{}' "$NETLIFY_BUILD_HOOK" && echo "Netlify deploy triggered"
-            fi
           fi

@@ -2,8 +2,8 @@
 __pycache__/
 *.pyc
 
-# Netlify / build
-.netlify/
+# Vercel / build
+.vercel/
 node_modules/
 
 # OS

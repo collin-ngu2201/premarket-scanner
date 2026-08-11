@@ -1,4 +1,4 @@
-// Intraday OHLC proxy for the divergence dashboard's mini candlesticks.
+// Intraday/daily OHLC proxy (Vercel function).
 // Yahoo's v8 chart endpoint is keyless and crumb-free (unlike /v7/quote).
 //
 //   GET /api/chart?symbol=AAPL&interval=5m&range=1d
@@ -15,19 +15,17 @@ const INTERVALS = new Set(["1m", "2m", "5m", "15m", "30m", "60m", "1d", "1wk"]);
 
 const round = (v) => (typeof v === "number" && isFinite(v) ? Math.round(v * 100) / 100 : null);
 
-function json(obj, status = 200, cache = "no-store") {
-  return new Response(JSON.stringify(obj), {
-    status,
-    headers: { "content-type": "application/json", "cache-control": cache },
-  });
+function send(res, status, obj, cache = "no-store") {
+  res.setHeader("content-type", "application/json");
+  res.setHeader("cache-control", cache);
+  res.status(status).send(JSON.stringify(obj));
 }
 
-export default async (req) => {
-  const u = new URL(req.url);
-  const symbol = (u.searchParams.get("symbol") || "").trim().toUpperCase();
-  if (!/^[A-Z][A-Z.\-]{0,9}$/.test(symbol)) return json({ error: "bad symbol" }, 400);
-  const range = RANGES.has(u.searchParams.get("range")) ? u.searchParams.get("range") : "1d";
-  const interval = INTERVALS.has(u.searchParams.get("interval")) ? u.searchParams.get("interval") : "5m";
+export default async function handler(req, res) {
+  const symbol = String(req.query?.symbol || "").trim().toUpperCase();
+  if (!/^[A-Z][A-Z.\-]{0,9}$/.test(symbol)) return send(res, 400, { error: "bad symbol" });
+  const range = RANGES.has(req.query?.range) ? req.query.range : "1d";
+  const interval = INTERVALS.has(req.query?.interval) ? req.query.interval : "5m";
 
   const url =
     `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}` +
@@ -35,14 +33,14 @@ export default async (req) => {
 
   try {
     const r = await fetch(url, { headers: { "User-Agent": UA } });
-    if (!r.ok) return json({ error: "upstream " + r.status }, 502);
+    if (!r.ok) return send(res, 502, { error: "upstream " + r.status });
     const d = await r.json();
-    const res = d?.chart?.result?.[0];
-    if (!res) return json({ error: "no data" }, 502);
+    const result = d?.chart?.result?.[0];
+    if (!result) return send(res, 502, { error: "no data" });
 
-    const meta = res.meta || {};
-    const ts = res.timestamp || [];
-    const q = res.indicators?.quote?.[0] || {};
+    const meta = result.meta || {};
+    const ts = result.timestamp || [];
+    const q = result.indicators?.quote?.[0] || {};
     const candles = [];
     for (let i = 0; i < ts.length; i++) {
       const o = q.open?.[i], h = q.high?.[i], l = q.low?.[i], c = q.close?.[i];
@@ -50,7 +48,8 @@ export default async (req) => {
       candles.push([ts[i], round(o), round(h), round(l), round(c)]);
     }
     const cp = meta.currentTradingPeriod || {};
-    return json(
+    return send(
+      res, 200,
       {
         symbol,
         interval,
@@ -59,12 +58,9 @@ export default async (req) => {
         regEnd: cp.regular?.end ?? null,
         candles,
       },
-      200,
       "public, max-age=45"
     );
   } catch (e) {
-    return json({ error: String(e.message || e) }, 502);
+    return send(res, 502, { error: String(e.message || e) });
   }
-};
-
-export const config = { path: "/api/chart" };
+}

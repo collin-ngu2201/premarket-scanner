@@ -434,7 +434,7 @@ async function fetchQuotes(){
     const n = document.getElementById("errNote");
     n.style.display="block";
     n.textContent = "⚠ "+e.message+
-      (location.protocol==="file:" ? "  (the /api proxy only runs on Netlify — deploy or use `netlify dev`)" : "");
+      (location.protocol==="file:" ? "  (the /api proxy runs on the deployed site — open the hosted URL)" : "");
   } finally {
     btn.disabled=false; btn.innerHTML="⟳ Refresh";
     scheduleNext();

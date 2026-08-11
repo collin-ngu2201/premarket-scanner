@@ -3,8 +3,8 @@
 A standalone web app that scans the **S&P Composite 1500** (S&P 500 + 400 + 600,
 ~1,500 large/mid/small-cap names) for pre-market movers and lets you filter by
 volume, market cap, sector, gainers/losers, and deviation from the main indexes
-(SPY / QQQ). Built to mirror the deploy pattern of the sibling
-`market-dashboard` (Netlify static site + serverless function).
+(SPY / QQQ). Deployed as a static site + serverless functions on **Vercel**.
+(Sibling tabs: Divergence, Options / IV-rank CSP screener, and Key Levels.)
 
 ## What it does
 
@@ -27,9 +27,9 @@ your evening. When the market is closed the app shows the last regular session.
 index.html                     SPA: universe load, scan math, filters, table (vanilla JS)
 universe.json                  S&P 1500 constituents + GICS sector (~1,500 names)
 sample_quotes.json             snapshot fallback (written by tools/probe.py)
-netlify/functions/quotes.mjs   batched quote proxy → /api/quotes
+api/quotes.mjs                 batched quote proxy → /api/quotes (Vercel function)
+api/chart.mjs                  OHLC proxy → /api/chart (candles for the charts)
 tools/probe.py                 local validator + snapshot generator (no Node needed)
-netlify.toml                   Netlify config
 ```
 
 **Data flow:** the browser loads `universe.json`, POSTs the symbol list (plus
@@ -44,8 +44,8 @@ auth that a browser can't do cross-origin. If `/api/quotes` is unavailable
 `quotes.mjs` normalizes every provider to one quote shape, so the front-end is
 provider-agnostic. Today it uses **Yahoo** (free, keyless). To move to a paid
 **full-universe** feed later, implement `polygonQuotes()` (stub included), set
-`POLYGON_KEY` in Netlify env, and call `/api/quotes?provider=polygon`. No
-front-end changes needed.
+`POLYGON_KEY` in the Vercel project env, and call `/api/quotes?provider=polygon`.
+No front-end changes needed.
 
 ## Data caveats (free Yahoo feed)
 
@@ -75,8 +75,10 @@ Static preview of the UI (uses the snapshot, no function):
 python -m http.server 8754     # then open /premarket-scanner/index.html
 ```
 
-Deploy (gets the live `/api/quotes` function): push to a Git repo connected to
-Netlify, same as `market-dashboard`.
+Deploy: the GitHub repo is connected to **Vercel**, which auto-deploys the
+static pages and the `api/` functions on every push. The scheduled scans
+(`.github/workflows/scan.yml`) commit fresh snapshots, and the Options/Levels
+dashboards read those from GitHub raw so data stays current between deploys.
 
 ## Refreshing the universe
 
@@ -88,4 +90,4 @@ Pulls the S&P 500 / 400 / 600 constituent tables (GICS sectors) from Wikipedia
 and merges them. Re-run periodically to pick up index add/drops. To widen
 further, append entries to `universe.json` with `symbol`, `yahoo` (dots→dashes,
 e.g. `BRK.B`→`BRK-B`), `name`, and `sector`. The function fetches quotes in
-parallel batches, so ~1,500 names stay well within the Netlify timeout.
+parallel batches, so ~1,500 names stay well within the function timeout.

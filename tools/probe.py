@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Local validator for the pre-market scanner (no Node required).
 
-Mirrors the logic in netlify/functions/quotes.mjs and index.html against LIVE
+Mirrors the logic in api/quotes.mjs and index.html against LIVE
 Yahoo data, so you can sanity-check the scan any time — including during a real
 US pre-market session (~4:00-9:30pm SGT) to confirm preMarket fields populate.
 

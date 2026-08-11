@@ -120,7 +120,7 @@ let observer=null;
 
 // Read the snapshot from GitHub raw (always current, refreshed by the scheduled
 // scan) with a fallback to the deployed copy — keeps data fresh regardless of
-// Netlify redeploy timing.
+// deploy timing.
 const RAW="https://raw.githubusercontent.com/collin-ngu2201/premarket-scanner/main/";
 async function loadSnapshot(file){
   for(const url of [RAW+file+"?t="+Date.now(), file]){

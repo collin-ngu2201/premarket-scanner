@@ -1,0 +1,7 @@
+{
+  "private": true,
+  "name": "premarket-scanner",
+  "engines": {
+    "node": "20.x"
+  }
+}
