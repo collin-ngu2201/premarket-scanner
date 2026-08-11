@@ -85,6 +85,12 @@
       <select id="fConf"><option value="1">1 (any level)</option><option value="2">2 levels</option><option value="3" selected>3 (all align)</option></select>
     </div>
     <div class="fld"><label>Trend</label><label class="toggle"><input type="checkbox" id="fAbove"> only above 200MA</label></div>
+    <div class="fld"><label>Chart lines</label>
+      <div style="display:flex;gap:12px;padding-top:3px">
+        <label class="toggle"><input type="checkbox" id="fSup" checked> Support</label>
+        <label class="toggle"><input type="checkbox" id="fFib" checked> Fib</label>
+      </div>
+    </div>
     <div class="fld"><label>Sort by</label>
       <select id="fSort">
         <option value="conf">Confluence</option>
@@ -113,7 +119,7 @@
 
 <script>
 let DATA=null;
-const cfg={thr:0.03,conf:3,above:false,sort:"conf"};
+const cfg={thr:0.03,conf:3,above:false,sort:"conf",showSup:true,showFib:true};
 const DISPLAY_CAP=80;
 const chartCache=new Map();
 let observer=null;
@@ -154,8 +160,11 @@ function levelsChartSVG(data, r){
   let lo=Infinity,hi=-Infinity;
   for(let i=s;i<cs.length;i++){ if(cs[i][3]<lo)lo=cs[i][3]; if(cs[i][2]>hi)hi=cs[i][2];
     for(const e of [s50,s200]) if(e[i]!=null){ if(e[i]<lo)lo=e[i]; if(e[i]>hi)hi=e[i]; } }
-  const lvls=[...(r.supLines||[]),...(r.fibLines||[])];
-  for(const v of lvls){ if(v>=lo*0.9 && v<=hi*1.1){ if(v<lo)lo=v; if(v>hi)hi=v; } }  // include nearby levels
+  // toggle on/off + keep only the nearest few level lines to cut clutter
+  const nearest=(arr,n)=> [...(arr||[])].sort((a,b)=>Math.abs(a-r.price)-Math.abs(b-r.price)).slice(0,n);
+  const supShown = cfg.showSup ? nearest(r.supLines,3) : [];
+  const fibShown = cfg.showFib ? nearest(r.fibLines,4) : [];
+  for(const v of [...supShown,...fibShown]){ if(v>=lo*0.9 && v<=hi*1.1){ if(v<lo)lo=v; if(v>hi)hi=v; } }
   if(!(hi>lo)) hi=lo+1;
   const x=i=>padL+slot*((i-s)+0.5);
   const y=v=>PT+(PB-PT)-((v-lo)/(hi-lo))*(PB-PT);
@@ -164,8 +173,8 @@ function levelsChartSVG(data, r){
     `<line x1="${padL}" y1="${y(v).toFixed(1)}" x2="${W-padR}" y2="${y(v).toFixed(1)}" stroke="${color}" stroke-width="0.8" stroke-dasharray="4 3" opacity="0.8"/>
      <text x="${W-padR+2}" y="${(y(v)+3).toFixed(1)}" fill="${color}" font-size="8.5">${lbl}</text>`;
   let levelLines="";
-  for(const v of (r.supLines||[])) levelLines+=hline(v,"#22c55e",v.toFixed(v>=100?0:2));
-  for(const v of (r.fibLines||[])) levelLines+=hline(v,"#fbbf24",v.toFixed(v>=100?0:2));
+  for(const v of supShown) levelLines+=hline(v,"#22c55e",v.toFixed(v>=100?0:2));
+  for(const v of fibShown) levelLines+=hline(v,"#fbbf24",v.toFixed(v>=100?0:2));
   // candles
   let body="";
   for(let i=s;i<cs.length;i++){ const o=cs[i][1],h=cs[i][2],l=cs[i][3],c=cs[i][4];
@@ -237,6 +246,14 @@ async function drawChart(slot){
     if(data && !data.error) chartCache.set(sym,data); else data=null;
   }
   slot.innerHTML = data ? levelsChartSVG(data,r) : `<div class="ld">chart n/a</div>`;
+  slot.dataset.drawn = data ? "1" : "";
+}
+// Redraw already-drawn charts in place (used by the Support/Fib toggles — no refetch).
+function redrawCharts(){
+  document.querySelectorAll('.chart[data-sym][data-drawn="1"]').forEach(slot=>{
+    const data=chartCache.get(slot.dataset.sym), r=window._rows[+slot.dataset.i];
+    if(data && r) slot.innerHTML=levelsChartSVG(data,r);
+  });
 }
 
 function renderMeta(){
@@ -257,6 +274,8 @@ function bind(){
   document.getElementById("fThr").onchange=(e)=>{cfg.thr=(Number(e.target.value)||3)/100; render();};
   document.getElementById("fConf").onchange=(e)=>{cfg.conf=Number(e.target.value); render();};
   document.getElementById("fAbove").onchange=(e)=>{cfg.above=e.target.checked; render();};
+  document.getElementById("fSup").onchange=(e)=>{cfg.showSup=e.target.checked; redrawCharts();};
+  document.getElementById("fFib").onchange=(e)=>{cfg.showFib=e.target.checked; redrawCharts();};
   document.getElementById("fSort").onchange=(e)=>{cfg.sort=e.target.value; render();};
   document.getElementById("btnReload").onclick=load;
 }
