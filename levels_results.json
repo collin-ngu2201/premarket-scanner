@@ -1,5 +1,5 @@
 {
-"asOf": "2026-09-04T21:18:58.167724+00:00",
+"asOf": "2026-09-07T19:03:04.080300+00:00",
 "universe": "S&P Composite 1500 (S&P 500+400+600, Wikipedia/GICS)",
 "scanned": 1506,
 "params": {
@@ -9795,9 +9795,9 @@
 "price": 58.37,
 "sma50": 58.77,
 "sma200": 53.76,
-"d200": 0.0789,
+"d200": 0.079,
 "dSup": 0.0003,
-"dFib": 0.0126,
+"dFib": 0.0127,
 "supLevel": 58.35,
 "supKind": "swing",
 "supLines": [
@@ -12583,6 +12583,44 @@
 "sector": "Financials"
 },
 {
+"yahoo": "CENX",
+"price": 46.78,
+"sma50": 45.65,
+"sma200": 49.51,
+"d200": -0.0583,
+"dSup": 0.0092,
+"dFib": 0.0011,
+"supLevel": 46.35,
+"supKind": "swing",
+"supLines": [
+40.48,
+40.56,
+42.86,
+44.41,
+45.65,
+46.35,
+48.08,
+53.7
+],
+"fibLevel": 46.83,
+"fibRatio": 0.786,
+"fibSwing": "rec",
+"fibLines": [
+40.18,
+45.95,
+46.83,
+51.73,
+51.87
+],
+"hi52": 70.43,
+"lo52": 21.48,
+"aboveMA": false,
+"conf3": 2,
+"symbol": "CENX",
+"name": "Century Aluminum Company",
+"sector": "Materials"
+},
+{
 "yahoo": "FIBK",
 "price": 37.85,
 "sma50": 38.23,
@@ -12785,46 +12823,6 @@
 "sector": "Financials"
 },
 {
-"yahoo": "VLY",
-"price": 14.02,
-"sma50": 14.49,
-"sma200": 13.14,
-"d200": 0.063,
-"dSup": 0.0011,
-"dFib": 0.0096,
-"supLevel": 14.01,
-"supKind": "swing",
-"supLines": [
-12.77,
-13.35,
-13.38,
-13.67,
-14.01,
-14.33,
-14.49
-],
-"fibLevel": 13.89,
-"fibRatio": 0.236,
-"fibSwing": "52w",
-"fibLines": [
-12.25,
-12.42,
-12.88,
-13.08,
-13.32,
-13.77,
-13.89,
-14.31
-],
-"hi52": 15.2,
-"lo52": 9.64,
-"aboveMA": true,
-"conf3": 2,
-"symbol": "VLY",
-"name": "Valley Bank",
-"sector": "Financials"
-},
-{
 "yahoo": "WMT",
 "price": 107.14,
 "sma50": 110.88,
@@ -12905,44 +12903,6 @@
 "symbol": "ANDE",
 "name": "The Andersons, Inc.",
 "sector": "Consumer Staples"
-},
-{
-"yahoo": "CENX",
-"price": 46.78,
-"sma50": 45.65,
-"sma200": 49.51,
-"d200": -0.0584,
-"dSup": 0.0091,
-"dFib": 0.0012,
-"supLevel": 46.35,
-"supKind": "swing",
-"supLines": [
-40.48,
-40.56,
-42.86,
-44.41,
-45.65,
-46.35,
-48.08,
-53.7
-],
-"fibLevel": 46.83,
-"fibRatio": 0.786,
-"fibSwing": "rec",
-"fibLines": [
-40.18,
-45.95,
-46.83,
-51.73,
-51.87
-],
-"hi52": 70.43,
-"lo52": 21.48,
-"aboveMA": false,
-"conf3": 2,
-"symbol": "CENX",
-"name": "Century Aluminum Company",
-"sector": "Materials"
 },
 {
 "yahoo": "DAN",
@@ -13957,6 +13917,46 @@
 "symbol": "USFD",
 "name": "US Foods",
 "sector": "Consumer Staples"
+},
+{
+"yahoo": "VLY",
+"price": 14.03,
+"sma50": 14.49,
+"sma200": 13.14,
+"d200": 0.0633,
+"dSup": 0.0014,
+"dFib": 0.01,
+"supLevel": 14.01,
+"supKind": "swing",
+"supLines": [
+12.77,
+13.35,
+13.38,
+13.67,
+14.01,
+14.33,
+14.49
+],
+"fibLevel": 13.89,
+"fibRatio": 0.236,
+"fibSwing": "52w",
+"fibLines": [
+12.25,
+12.42,
+12.88,
+13.08,
+13.32,
+13.77,
+13.89,
+14.31
+],
+"hi52": 15.2,
+"lo52": 9.64,
+"aboveMA": true,
+"conf3": 2,
+"symbol": "VLY",
+"name": "Valley Bank",
+"sector": "Financials"
 },
 {
 "yahoo": "VRT",
@@ -15687,10 +15687,10 @@
 },
 {
 "yahoo": "AVGO",
-"price": 357.89,
+"price": 357.9,
 "sma50": 383.66,
 "sma200": 369.83,
-"d200": -0.0334,
+"d200": -0.0333,
 "dSup": 0.0022,
 "dFib": 0.029,
 "supLevel": 357.11,
