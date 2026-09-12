@@ -1,6 +1,6 @@
 name: options-scan
 
-# Refresh the options + levels snapshots and accrue IV history.
+# Refresh the options + levels + money-flow snapshots and accrue IV history.
 # Runs on weekdays during US market hours (UTC); also triggerable by hand.
 # The commit push auto-deploys on Vercel; the dashboards also read the snapshots
 # straight from GitHub raw, so data is fresh regardless of deploy timing.
@@ -31,11 +31,16 @@ jobs:
         run: python tools/scan_options.py --workers 6
       - name: Run levels scan
         run: python tools/scan_levels.py --workers 8
+      # Money flow works off daily bars, so a mid-session run scores today's
+      # bar while it is still forming. That is the same trade-off the other
+      # scans make and the 19:00 run is late enough for it to be meaningful.
+      - name: Run money-flow scan
+        run: python tools/scan_flow.py --workers 8
       - name: Commit snapshots
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add scan_results.json iv_history.json levels_results.json
+          git add scan_results.json iv_history.json levels_results.json flow_results.json
           if git diff --staged --quiet; then
             echo "no changes"
           else

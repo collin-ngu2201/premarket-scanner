@@ -3,8 +3,10 @@
 //
 //   GET /api/chart?symbol=AAPL&interval=5m&range=1d
 //
-// Returns compact candles [[t,o,h,l,c], ...] plus prevClose and the regular
-// session window (so the client can shade pre/post-market).
+// Returns compact candles [[t,o,h,l,c,v], ...] plus prevClose and the regular
+// session window (so the client can shade pre/post-market). Volume is appended
+// last so existing callers that read indexes 0-4 are unaffected; flow.html uses
+// it to estimate signed (buy vs sell) volume client-side.
 
 const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
@@ -45,7 +47,9 @@ export default async function handler(req, res) {
     for (let i = 0; i < ts.length; i++) {
       const o = q.open?.[i], h = q.high?.[i], l = q.low?.[i], c = q.close?.[i];
       if (o == null || h == null || l == null || c == null) continue;
-      candles.push([ts[i], round(o), round(h), round(l), round(c)]);
+      const v = q.volume?.[i];
+      candles.push([ts[i], round(o), round(h), round(l), round(c),
+                    typeof v === "number" && isFinite(v) ? v : 0]);
     }
     const cp = meta.currentTradingPeriod || {};
     return send(

@@ -1,0 +1,159 @@
+// Signed Volume & Cumulative Delta (BVC) — companion to flow.html
+//
+// A volume bar is unsigned: it tells you how much traded, never who was the
+// aggressor. Without a tick feed carrying the bid/ask you cannot know for
+// certain, but you can estimate it well. This plots that estimate on any chart:
+//
+//   * volume split into buying and selling, as a stacked histogram
+//   * cumulative volume delta (CVD) — the running net of buyers over sellers
+//   * automatic divergence markers where price and CVD disagree
+//   * Wyckoff absorption markers: heavy volume that produces no price movement
+//
+// Estimators (pick in Settings):
+//   BVC  Bulk Volume Classification — Easley, Lopez de Prado & O'Hara (2012).
+//        buy share = CDF(dP / sigma_dP). Probabilistic rather than
+//        all-or-nothing; the right choice on intraday bars.
+//   CLV  Close Location Value (Chaikin) — where the close sits inside the
+//        bar's own range. Immune to gaps; the right choice on daily bars.
+//   TICK The classic tick rule, sign(dP) * V. Crude baseline.
+//
+// Read it like this: price and CVD normally travel together. When they part
+// company one of them is lying. Price making a higher high while CVD makes a
+// lower high means the rally is being sold into — traders are escaping under
+// cover of a rising tape. The mirror case, price lower while CVD holds up,
+// means dips are being absorbed.
+//
+// Install: TradingView -> Pine Editor -> paste -> Add to chart.
+// Free bar data only, so this is an estimate of order flow, not exchange
+// order flow. Not investment advice.
+
+//@version=5
+indicator("Signed Volume & Cumulative Delta (BVC)", shorttitle="Flow Δ", overlay=false, format=format.volume)
+
+// ---- inputs ---------------------------------------------------------------
+grpM   = "Method"
+method = input.string("BVC (auto by timeframe)", "Signing method", options=["BVC (auto by timeframe)", "BVC", "CLV", "Tick rule"], group=grpM,
+   tooltip="Auto uses CLV on daily-and-higher charts (where a close-to-close move is just the price trend) and BVC intraday (where bar-to-bar change really is an aggression proxy).")
+sigLen = input.int(50, "BVC volatility lookback", minval=5, maxval=500, group=grpM)
+
+grpD   = "Divergence"
+divLen = input.int(20, "Divergence lookback (bars)", minval=5, maxval=200, group=grpD)
+divPct = input.float(1.0, "Min price move %", minval=0.0, step=0.25, group=grpD,
+   tooltip="Price must have moved at least this much over the lookback before a divergence counts.")
+showDiv = input.bool(true, "Mark price/CVD divergences", group=grpD)
+
+grpA   = "Absorption (Wyckoff effort vs result)"
+showAbs = input.bool(true, "Mark absorption bars", group=grpA)
+volZ    = input.float(1.5, "Volume z-score above", minval=0.5, step=0.1, group=grpA)
+resATR  = input.float(0.5, "Result below (x ATR)", minval=0.1, step=0.1, group=grpA)
+
+grpV   = "Display"
+// Cumulative delta is a running total and per-bar volume is not, so on one
+// shared y-axis the histogram collapses to a flat line. Pine panes have a
+// single axis, so this is a choice rather than two checkboxes. Add the script
+// to the chart twice to see both at once.
+paneMode = input.string("Cumulative delta", "Pane shows", options=["Cumulative delta", "Per-bar signed volume"], group=grpV)
+resetCvd = input.string("Never", "Reset CVD", options=["Never", "Daily", "Weekly"], group=grpV,
+   tooltip="Intraday, resetting each session makes the day's own balance of buyers and sellers legible. Ignored when the reset period is not longer than the chart's timeframe.")
+
+cUp   = input.color(color.new(#22c55e, 0), "Buying", group=grpV)
+cDn   = input.color(color.new(#ef4444, 0), "Selling", group=grpV)
+
+// ---- signed volume --------------------------------------------------------
+isIntraday = timeframe.isintraday
+useMethod = method == "BVC (auto by timeframe)" ? (isIntraday ? "BVC" : "CLV") : method
+
+vol   = nz(volume)
+dP    = nz(ta.change(close))          // na on the first bar; na would poison the CVD
+sigma = ta.stdev(dP, sigLen)
+
+// BVC: buy share = Phi(dP / sigma). Pine has no normal CDF, so use the logistic
+// approximation Phi(z) ~ 1/(1+exp(-1.702 z)), accurate to about 0.01.
+bvcFrac = na(sigma) or sigma <= 0 ? 0.5 : 1.0 / (1.0 + math.exp(-1.702 * dP / sigma))
+
+rng     = high - low
+clv     = rng <= 0 ? 0.0 : ((close - low) - (high - close)) / rng
+clvFrac = (1.0 + clv) / 2.0
+
+var int tickSign = 1                  // zero-ticks inherit the previous sign
+tickSign := dP > 0 ? 1 : dP < 0 ? -1 : tickSign
+tickFrac = tickSign > 0 ? 1.0 : 0.0
+
+buyFrac = useMethod == "CLV" ? clvFrac : useMethod == "Tick rule" ? tickFrac : bvcFrac
+buyVol  = vol * buyFrac
+sellVol = vol * (1.0 - buyFrac)
+delta   = buyVol - sellVol
+
+// ---- cumulative delta -----------------------------------------------------
+tfSec     = timeframe.in_seconds()
+canReset  = resetCvd == "Daily" ? tfSec < 86400 : resetCvd == "Weekly" ? tfSec < 604800 : false
+newPeriod = not canReset ? false :
+            resetCvd == "Daily" ? ta.change(time("D")) != 0 : ta.change(time("W")) != 0
+var float cvd = 0.0
+cvd := (newPeriod ? 0.0 : nz(cvd)) + delta
+
+// ---- plots ----------------------------------------------------------------
+showHist = paneMode == "Per-bar signed volume"
+// Mirrored around zero rather than stacked: buying above the line, selling
+// below, so the bar's own balance is readable at a glance.
+plot(showHist ?  buyVol  : na, "Buying volume",  color=color.new(cUp, 25), style=plot.style_columns, histbase=0)
+plot(showHist ? -sellVol : na, "Selling volume", color=color.new(cDn, 25), style=plot.style_columns, histbase=0)
+
+cvdCol = cvd >= nz(cvd[1]) ? cUp : cDn
+plot(showHist ? na : cvd, "Cumulative delta", color=cvdCol, linewidth=2)
+hline(0, "Zero", color=color.new(color.gray, 60), linestyle=hline.style_dotted)
+
+// ---- divergence -----------------------------------------------------------
+pxChg  = close - close[divLen]
+pxPct  = close[divLen] != 0 ? 100 * pxChg / close[divLen] : 0.0
+cvdChg = cvd - cvd[divLen]
+cvdRng = math.max(ta.highest(cvd, divLen) - ta.lowest(cvd, divLen), 1.0)
+cvdNorm = cvdChg / cvdRng
+
+// CVD must have net-travelled at least this much of its own in-window range
+// against price. Matches CVD_MOVE_THR in tools/flow_lib.py.
+cvdThr  = 0.20
+bearDiv = showDiv and pxPct >  divPct and cvdNorm < -cvdThr
+bullDiv = showDiv and pxPct < -divPct and cvdNorm >  cvdThr
+
+// only mark the bar a divergence first appears on, not every bar it persists
+bearNew = bearDiv and not bearDiv[1]
+bullNew = bullDiv and not bullDiv[1]
+
+plotshape(bearNew, "Rallies sold", shape.triangledown, location.top,    color=cDn, size=size.tiny, text="sold")
+plotshape(bullNew, "Dips bought",  shape.triangleup,   location.bottom, color=cUp, size=size.tiny, text="bought")
+
+// ---- absorption (effort vs result) ----------------------------------------
+vZ     = ta.stdev(vol, 20) > 0 ? (vol - ta.sma(vol, 20)) / ta.stdev(vol, 20) : 0.0
+atrV   = ta.atr(14)
+result = atrV > 0 ? math.abs(dP) / atrV : 999.0
+absorb = showAbs and vZ >= volZ and result <= resATR
+
+// where in the recent range it happened decides whether size is being built or unloaded
+rngHi  = ta.highest(high, 20)
+rngLo  = ta.lowest(low, 20)
+pos    = rngHi > rngLo ? (close - rngLo) / (rngHi - rngLo) : 0.5
+absBull = absorb and pos < 0.40
+absBear = absorb and pos > 0.60
+
+plotchar(absBull, "Absorption at lows",  "◆", location.bottom, color=color.new(cUp, 20), size=size.tiny)
+plotchar(absBear, "Absorption at highs", "◆", location.top,    color=color.new(cDn, 20), size=size.tiny)
+
+// ---- alerts ---------------------------------------------------------------
+alertcondition(bearNew, "Bearish flow divergence", "Price is rising but cumulative delta is falling — rallies are being sold into.")
+alertcondition(bullNew, "Bullish flow divergence", "Price is falling but cumulative delta is rising — dips are being absorbed.")
+alertcondition(absBull, "Absorption at the lows",  "Heavy volume, almost no price movement, near the bottom of the range — supply is being absorbed.")
+alertcondition(absBear, "Absorption at the highs", "Heavy volume, almost no price movement, near the top of the range — supply is being distributed.")
+
+// ---- readout --------------------------------------------------------------
+var table tb = table.new(position.top_right, 2, 4, border_width=1)
+if barstate.islast
+    netPct = vol > 0 ? 100 * delta / vol : 0.0
+    table.cell(tb, 0, 0, "method",   text_color=color.gray,  text_size=size.tiny)
+    table.cell(tb, 1, 0, useMethod,  text_color=color.white, text_size=size.tiny)
+    table.cell(tb, 0, 1, "bar delta", text_color=color.gray, text_size=size.tiny)
+    table.cell(tb, 1, 1, str.tostring(netPct, "#.#") + "%", text_color=delta >= 0 ? cUp : cDn, text_size=size.tiny)
+    table.cell(tb, 0, 2, "CVD",      text_color=color.gray,  text_size=size.tiny)
+    table.cell(tb, 1, 2, str.tostring(cvd, format.volume), text_color=cvd >= 0 ? cUp : cDn, text_size=size.tiny)
+    table.cell(tb, 0, 3, "20-bar Δ", text_color=color.gray,  text_size=size.tiny)
+    table.cell(tb, 1, 3, str.tostring(cvdNorm * 100, "#.#") + "%", text_color=cvdNorm >= 0 ? cUp : cDn, text_size=size.tiny)

@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0b0f17">
+<title>Money Flow · Accumulation / Distribution</title>
+<style>
+  :root{
+    --bg:#0b0f17; --card:#121826; --card2:#0f1522; --border:#1f2937;
+    --txt:#e5e7eb; --muted:#8b95a7; --dim:#5b6575;
+    --green:#22c55e; --red:#ef4444; --yellow:#eab308; --blue:#3b82f6; --cyan:#22d3ee; --purple:#a78bfa; --gold:#fbbf24; --orange:#f97316;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(1200px 800px at 70% -10%,#13203a 0%,var(--bg) 55%);color:var(--txt);
+       font:14px/1.45 -apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;min-height:100vh}
+  a{color:var(--cyan);text-decoration:none}
+  header{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;
+         padding:13px 20px;border-bottom:1px solid var(--border);position:sticky;top:0;
+         background:rgba(11,15,23,.9);backdrop-filter:blur(8px);z-index:20}
+  .brand{font-size:18px;font-weight:700}
+  .brand small{color:var(--muted);font-weight:400;margin-left:8px}
+  .navlink{font-size:13px;margin-left:12px}
+  .hdr-right{display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:12.5px;color:var(--muted)}
+  .pill{padding:3px 11px;border-radius:999px;border:1px solid var(--border);font-weight:700;font-size:12px;color:var(--muted)}
+  button{background:#1c2638;color:var(--txt);border:1px solid var(--border);border-radius:8px;padding:6px 12px;font-size:13px;cursor:pointer;font-family:inherit}
+  button:hover{background:#243047}
+  input[type=number],input[type=search]{background:#0e1422;color:var(--txt);border:1px solid var(--border);border-radius:8px;padding:6px 8px;font-size:13px;font-family:inherit}
+  input[type=number]{width:78px} input[type=search]{width:150px}
+  select{background:#0e1422;color:var(--txt);border:1px solid var(--border);border-radius:8px;padding:6px 8px;font-size:13px;font-family:inherit}
+  main{max-width:1560px;margin:0 auto;padding:16px 20px 40px}
+  section.panel{background:linear-gradient(180deg,var(--card),var(--card2));border:1px solid var(--border);
+                border-radius:14px;padding:14px 16px;margin-bottom:14px}
+  .ptitle{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px}
+  .ptitle b{color:var(--txt);text-transform:none;letter-spacing:0;font-size:12.5px}
+
+  /* ---- market strip ---- */
+  .mkt{display:grid;grid-template-columns:minmax(230px,1fr) 2fr;gap:20px}
+  @media(max-width:820px){.mkt{grid-template-columns:1fr}}
+  .bignum{font-size:30px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.1}
+  .bigsub{color:var(--muted);font-size:12px;margin-top:3px}
+  .meter{height:9px;border-radius:5px;background:#0e1422;border:1px solid var(--border);position:relative;margin:12px 0 5px;overflow:hidden}
+  .meter i{position:absolute;top:0;bottom:0;display:block}
+  .meter .mid{position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--dim)}
+  .split{display:flex;height:9px;border-radius:5px;overflow:hidden;border:1px solid var(--border);margin:12px 0 5px}
+  .split i{display:block}
+  .secrow{display:grid;grid-template-columns:132px 1fr 82px 46px;gap:8px;align-items:center;font-size:12px;padding:1.5px 0}
+  .secrow .nm{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .secbar{position:relative;height:11px;background:#0e1422;border-radius:3px}
+  .secbar i{position:absolute;top:0;bottom:0;border-radius:2px}
+  .secbar .mid{position:absolute;left:50%;top:-1px;bottom:-1px;width:1px;background:var(--dim)}
+  .secrow .val,.secrow .sc{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+
+  /* ---- ETF tiles ---- */
+  .etfgrp{margin-bottom:9px}
+  .etfgrp .glbl{font-size:10.5px;color:var(--dim);text-transform:uppercase;letter-spacing:.6px;margin-bottom:5px}
+  .tiles{display:flex;gap:7px;flex-wrap:wrap}
+  .tile{border:1px solid var(--border);border-radius:8px;padding:5px 9px;cursor:pointer;background:#0e1422;min-width:88px}
+  .tile:hover{border-color:var(--cyan)}
+  .tile .ts{font-weight:800;font-size:12.5px}
+  .tile .tn{font-size:10px;color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:96px}
+  .tile .tv{font-size:12px;font-weight:800;font-variant-numeric:tabular-nums}
+
+  /* ---- controls ---- */
+  .controls{display:flex;flex-wrap:wrap;gap:14px 20px;align-items:flex-end}
+  .fld{display:flex;flex-direction:column;gap:4px}
+  .fld label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+  .funnel{display:flex;gap:14px;flex-wrap:wrap;color:var(--muted);font-size:12px;margin:0 2px 12px}
+  .funnel b{color:var(--txt)} .funnel .sep{color:var(--dim)}
+
+  /* ---- cards ---- */
+  .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(500px,1fr));gap:14px}
+  @media(max-width:620px){.cards{grid-template-columns:1fr}}
+  @media(max-width:520px){.c{padding:11px 12px}.chart{height:160px}}
+  .c{background:linear-gradient(180deg,var(--card),var(--card2));border:1px solid var(--border);border-radius:14px;padding:13px 15px}
+  .c.acc2{border-color:rgba(34,197,94,.55);box-shadow:0 0 0 1px rgba(34,197,94,.2)}
+  .c.acc1{border-color:rgba(34,197,94,.3)}
+  .c.dis2{border-color:rgba(239,68,68,.55);box-shadow:0 0 0 1px rgba(239,68,68,.2)}
+  .c.dis1{border-color:rgba(239,68,68,.3)}
+  .chead{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+  .rank{color:var(--dim);font-size:12px;font-weight:700}
+  .sym{font-size:18px;font-weight:800}
+  .px{margin-left:auto;font-size:15px;font-weight:700;font-variant-numeric:tabular-nums}
+  .px small{font-size:12px;font-weight:600;margin-left:6px}
+  .scorepill{font-size:11.5px;font-weight:800;padding:2px 9px;border-radius:999px;font-variant-numeric:tabular-nums}
+  .scorepill.acc2{color:#052e16;background:var(--green)} .scorepill.acc1{color:var(--green);background:rgba(34,197,94,.16);border:1px solid rgba(34,197,94,.5)}
+  .scorepill.dis2{color:#450a0a;background:var(--red)}   .scorepill.dis1{color:var(--red);background:rgba(239,68,68,.16);border:1px solid rgba(239,68,68,.5)}
+  .scorepill.neu{color:var(--muted);background:#1b2435}
+  .nm{color:var(--muted);font-size:12px;margin:1px 0 8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .badges{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:9px}
+  .b{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:6px;border:1px solid var(--border);color:var(--dim);font-variant-numeric:tabular-nums}
+  .b.bear{color:var(--red);border-color:rgba(239,68,68,.55);background:rgba(239,68,68,.12)}
+  .b.bull{color:var(--green);border-color:rgba(34,197,94,.55);background:rgba(34,197,94,.12)}
+  .b.warn{color:var(--gold);border-color:rgba(251,191,36,.5);background:rgba(251,191,36,.1)}
+  .b.info{color:var(--cyan);border-color:rgba(34,211,238,.35)}
+  .b.sec{color:var(--purple);border-color:rgba(167,139,250,.3)}
+  .tabs{display:flex;gap:4px;margin-left:auto}
+  .tabs button{padding:2px 9px;font-size:11px;border-radius:6px}
+  .tabs button.on{background:#2a3750;border-color:var(--cyan);color:var(--txt)}
+  .tabs button:disabled{opacity:.35;cursor:default}
+  .chart{height:186px;background:#0c121e;border:1px solid var(--border);border-radius:8px;position:relative;overflow:hidden;margin-bottom:8px}
+  .chart svg{width:100%;height:100%;display:block}
+  .chart .ld{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--dim);font-size:12px}
+  .legend{display:flex;gap:12px;font-size:10.5px;color:var(--dim);margin:-4px 0 8px 2px;flex-wrap:wrap}
+  .legend i{font-style:normal}
+  .breakdown{height:46px;margin-bottom:7px}
+  .breakdown svg{width:100%;height:100%;display:block}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:4px 12px;font-size:11.5px;color:var(--muted)}
+  .stats div{display:flex;justify-content:space-between;gap:6px;border-bottom:1px dotted #1a2231;padding:1px 0}
+  .stats b{color:var(--txt);font-variant-numeric:tabular-nums;font-weight:600}
+  .pos{color:var(--green)} .neg{color:var(--red)} .neu{color:var(--muted)}
+  .empty{color:var(--muted);padding:30px;text-align:center}
+  .spin{display:inline-block;width:13px;height:13px;border:2px solid var(--dim);border-top-color:var(--cyan);border-radius:50%;animation:sp .7s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  footer{max-width:1560px;margin:14px auto 30px;padding:0 20px;color:var(--dim);font-size:11.5px;line-height:1.75}
+  footer b{color:var(--muted)} footer code{color:var(--cyan);font-size:11px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">💧 Money Flow
+    <small>accumulation vs distribution · signed volume</small>
+    <a class="navlink" href="index.html">← Scanner</a>
+    <a class="navlink" href="divergence.html">Divergence →</a>
+    <a class="navlink" href="options.html">Options →</a>
+    <a class="navlink" href="levels.html">Levels →</a>
+  </div>
+  <div class="hdr-right">
+    <span id="asOf" class="pill">—</span>
+    <button id="btnReload">⟳ Reload</button>
+  </div>
+</header>
+
+<main>
+  <section class="panel" id="mktPanel" style="display:none">
+    <div class="ptitle">Market-wide flow <b id="mktHead"></b></div>
+    <div class="mkt">
+      <div>
+        <div class="bignum" id="mktNet">—</div>
+        <div class="bigsub">net signed dollar volume, last 20 sessions</div>
+        <div class="meter" id="mktMeter"><span class="mid"></span></div>
+        <div class="bigsub">flow breadth <span id="mktBreadth"></span> &nbsp;(net ÷ gross)</div>
+        <div class="split" id="mktSplit"></div>
+        <div class="bigsub" id="mktSplitLbl"></div>
+      </div>
+      <div>
+        <div class="ptitle" style="margin-bottom:7px">Net flow by sector &nbsp;<span style="text-transform:none;letter-spacing:0">— where money is rotating</span></div>
+        <div class="secrow" style="color:var(--dim);font-size:10px;text-transform:uppercase;letter-spacing:.5px">
+          <span></span><span>out ← → in</span><span class="val">net $</span><span class="sc">score</span></div>
+        <div id="mktSectors"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" id="etfPanel" style="display:none">
+    <div class="ptitle">ETF flow <b>— is money entering or leaving the theme itself</b></div>
+    <div id="etfTiles"></div>
+  </section>
+
+  <section class="panel controls">
+    <div class="fld"><label>Search</label><input type="search" id="fQ" placeholder="symbol or name"></div>
+    <div class="fld"><label>Show</label>
+      <select id="fDir">
+        <option value="all">Everything</option>
+        <option value="acc">Accumulation only</option>
+        <option value="dis">Distribution only</option>
+        <option value="div">Price/flow divergence only</option>
+        <option value="divbear">Bearish divergence (rallies sold)</option>
+        <option value="divbull">Bullish divergence (dips bought)</option>
+        <option value="absorb">Wyckoff absorption</option>
+        <option value="toxic">High VPIN (toxic flow)</option>
+      </select>
+    </div>
+    <div class="fld"><label>Min |score|</label><input type="number" id="fScore" value="25" min="0" max="100" step="5"></div>
+    <div class="fld"><label>Min agreement</label>
+      <select id="fAgree"><option value="0">any</option><option value="2">2 of 3 methods</option><option value="3">3 of 3 methods</option></select>
+    </div>
+    <div class="fld"><label>Kind</label>
+      <select id="fKind"><option value="all">Stocks + ETFs</option><option value="stock">Stocks</option><option value="etf">ETFs</option></select>
+    </div>
+    <div class="fld"><label>Sector</label><select id="fSector"><option value="">All sectors</option></select></div>
+    <div class="fld"><label>Min $ vol (M)</label><input type="number" id="fDv" value="0" min="0" step="5"></div>
+    <div class="fld"><label>Sort by</label>
+      <select id="fSort">
+        <option value="abs">Strongest signal</option>
+        <option value="acc">Most accumulation</option>
+        <option value="dis">Most distribution</option>
+        <option value="net">Net delta % of volume</option>
+        <option value="vpin">VPIN (flow toxicity)</option>
+        <option value="dv">Dollar volume</option>
+        <option value="chg">20-day price change</option>
+      </select>
+    </div>
+  </section>
+
+  <div class="funnel" id="funnel"></div>
+  <section class="cards" id="cards"><div class="empty"><span class="spin"></span> loading flow scan…</div></section>
+</main>
+
+<footer id="foot"></footer>
+
+<script>
+// ---------------------------------------------------------------------------
+// Money Flow dashboard. Reads the snapshot written by tools/scan_flow.py and
+// can re-derive intraday order flow live from /api/chart (which now returns
+// volume as the 6th candle field).
+// ---------------------------------------------------------------------------
+let DATA=null, ROWS=[], WEIGHTS={};
+const cfg={q:"",dir:"all",score:25,agree:0,kind:"all",sector:"",dv:0,sort:"abs"};
+const DISPLAY_CAP=90;
+const chartMode=new Map();      // symbol -> "daily" | "intra" | "live"
+const liveCache=new Map();      // symbol -> computed live intraday flow
+let observer=null;
+
+// Read the snapshot from GitHub raw (always current, refreshed by the
+// scheduled scan) with a fallback to the deployed copy.
+const RAW="https://raw.githubusercontent.com/collin-ngu2201/premarket-scanner/main/";
+async function loadSnapshot(file){
+  for(const url of [RAW+file+"?t="+Date.now(), file]){
+    try{ const r=await fetch(url,{cache:"no-store"}); if(r.ok) return await r.json(); }catch(_){}
+  }
+  throw new Error(file+" unavailable");
+}
+
+// ---- formatting ----------------------------------------------------------
+const fusd=(v)=>{ if(v==null) return "–"; const a=Math.abs(v), s=v<0?"-":"+";
+  if(a>=1e9) return s+"$"+(a/1e9).toFixed(2)+"B";
+  if(a>=1e6) return s+"$"+(a/1e6).toFixed(1)+"M";
+  if(a>=1e3) return s+"$"+(a/1e3).toFixed(0)+"K"; return s+"$"+a.toFixed(0); };
+const fvol=(v)=>{ if(v==null) return "–"; const a=Math.abs(v);
+  if(a>=1e9) return (v/1e9).toFixed(2)+"B"; if(a>=1e6) return (v/1e6).toFixed(1)+"M";
+  if(a>=1e3) return (v/1e3).toFixed(0)+"K"; return String(Math.round(v)); };
+const fpx =(v)=>v==null?"–":"$"+(v>=1000?v.toFixed(0):v.toFixed(2));
+const fpct=(v,d=1)=>v==null?"–":(v>=0?"+":"")+v.toFixed(d)+"%";
+const cls =(v)=>v==null?"neu":v>0?"pos":v<0?"neg":"neu";
+const esc =(s)=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+// ---------------------------------------------------------------------------
+// Client-side signed volume (mirrors tools/flow_lib.py) -- used only for the
+// LIVE drill-down, where we have raw candles from /api/chart and no scan.
+// Intraday bars use BVC: buy_fraction = Phi(dP / sigma_dP).
+// ---------------------------------------------------------------------------
+function normCdf(z){ // Abramowitz-Stegun 7.1.26 approximation of erf
+  const s=z<0?-1:1, x=Math.abs(z)/Math.SQRT2, t=1/(1+0.3275911*x);
+  const y=1-(((((1.061405429*t-1.453152027)*t)+1.421413741)*t-0.284496736)*t+0.254829592)*t*Math.exp(-x*x);
+  return 0.5*(1+s*y);
+}
+function bvcSplit(closes,vols,win=50){
+  const n=closes.length, buy=new Array(n), sell=new Array(n);
+  const d=[0]; for(let i=1;i<n;i++) d.push(closes[i]-closes[i-1]);
+  for(let i=0;i<n;i++){
+    const w=d.slice(Math.max(1,i-win+1),i+1);
+    let frac=0.5;
+    if(w.length>=5){
+      const m=w.reduce((a,b)=>a+b,0)/w.length;
+      const sd=Math.sqrt(w.reduce((a,b)=>a+(b-m)*(b-m),0)/(w.length-1));
+      if(sd>0) frac=normCdf(d[i]/sd);
+    }
+    buy[i]=vols[i]*frac; sell[i]=vols[i]*(1-frac);
+  }
+  return [buy,sell];
+}
+function cumDelta(buy,sell){ let r=0; return buy.map((b,i)=>(r+=b-sell[i])); }
+function volProfile(highs,lows,vols,buy,sell,bins=24){
+  if(!highs.length) return null;
+  const lo=Math.min(...lows), hi0=Math.max(...highs), hi=hi0>lo?hi0:lo+0.01;
+  const w=(hi-lo)/bins, tot=new Array(bins).fill(0), dlt=new Array(bins).fill(0);
+  for(let i=0;i<highs.length;i++){
+    const v=vols[i]; if(!(v>0)) continue;
+    const d=buy[i]-sell[i];
+    const b0=Math.min(bins-1,Math.max(0,Math.floor((lows[i]-lo)/w)));
+    const b1=Math.min(bins-1,Math.max(0,Math.floor((highs[i]-lo)/w)));
+    const span=b1-b0+1;
+    for(let b=b0;b<=b1;b++){ tot[b]+=v/span; dlt[b]+=d/span; }
+  }
+  const grand=tot.reduce((a,b)=>a+b,0);
+  let poc=0; for(let b=1;b<bins;b++) if(tot[b]>tot[poc]) poc=b;
+  let loI=poc, hiI=poc, acc=tot[poc];
+  while(acc<grand*0.7 && (loI>0||hiI<bins-1)){
+    const dn=loI>0?tot[loI-1]:-1, up=hiI<bins-1?tot[hiI+1]:-1;
+    if(up>=dn){ hiI++; acc+=tot[hiI]; } else { loI--; acc+=tot[loI]; }
+  }
+  const ctr=(b)=>lo+w*(b+0.5);
+  return { levels:tot.map((v,b)=>({p:ctr(b),v,d:dlt[b]})),
+           poc:ctr(poc), vah:ctr(hiI)+w/2, val:ctr(loI)-w/2 };
+}
+function liveFlow(candles){
+  const t=candles.map(k=>k[0]), h=candles.map(k=>k[2]), l=candles.map(k=>k[3]),
+        c=candles.map(k=>k[4]), v=candles.map(k=>k[5]||0);
+  if(c.length<20) return null;
+  const [buy,sell]=bvcSplit(c,v);
+  const cvd=cumDelta(buy,sell);
+  const tot=v.reduce((a,b)=>a+b,0)||1;
+  const net=buy.reduce((a,b)=>a+b,0)-sell.reduce((a,b)=>a+b,0);
+  let pv=0,vv=0; for(let i=0;i<c.length;i++){ const tp=(h[i]+l[i]+c[i])/3; pv+=tp*v[i]; vv+=v[i]; }
+  const prof=volProfile(h,l,v,buy,sell);
+  const days=t.map(x=>Math.floor(x/86400));
+  const breaks=[]; for(let i=1;i<days.length;i++) if(days[i]!==days[i-1]) breaks.push(i);
+  return { cvd, closes:c, dayBreaks:breaks, netDeltaPct:100*net/tot,
+           vwap:vv?pv/vv:c[c.length-1], profile:prof?prof.levels:[],
+           poc:prof?prof.poc:null, vah:prof?prof.vah:null, val:prof?prof.val:null,
+           live:true, bars:c.length };
+}
+
+// ---------------------------------------------------------------------------
+// charts
+// ---------------------------------------------------------------------------
+const CW=500, CH=186, PAD_L=4, PAD_T=10, PAD_B=16;
+
+function pathOf(vals, x, y){
+  const p=[]; for(let i=0;i<vals.length;i++) if(vals[i]!=null) p.push(`${x(i).toFixed(1)},${y(vals[i]).toFixed(1)}`);
+  return p.join(" ");
+}
+
+/* Price vs cumulative volume delta. The whole point of the panel: when the
+   white price line and the coloured CVD line stop tracking each other, the
+   tape is telling you something the price chart alone cannot. */
+function flowChartSVG(closes, cvd, opts){
+  opts=opts||{};
+  const n=closes.length;
+  if(n<5) return `<div class="ld">no data</div>`;
+  const profW = (opts.profile && opts.profile.length) ? 78 : 0;
+  const plotW = CW-PAD_L-profW-4, plotH = CH-PAD_T-PAD_B;
+  const x=(i)=>PAD_L+(plotW)*(i/(n-1));
+  let pLo=Math.min(...closes), pHi=Math.max(...closes);
+  if(opts.profile && opts.profile.length){
+    for(const lv of opts.profile){ if(lv.p<pLo)pLo=lv.p; if(lv.p>pHi)pHi=lv.p; }
+  }
+  if(!(pHi>pLo)) pHi=pLo+1;
+  const padP=(pHi-pLo)*0.06; pLo-=padP; pHi+=padP;
+  const yP=(v)=>PAD_T+plotH-((v-pLo)/(pHi-pLo))*plotH;
+  let cLo=Math.min(...cvd), cHi=Math.max(...cvd);
+  if(!(cHi>cLo)) cHi=cLo+1;
+  const yC=(v)=>PAD_T+plotH-((v-cLo)/(cHi-cLo))*plotH;
+
+  const rising = cvd[n-1] >= cvd[0];
+  const cCol = rising ? "var(--green)" : "var(--red)";
+
+  // day separators (intraday only)
+  let seps="";
+  for(const b of (opts.dayBreaks||[])){
+    if(b<=0||b>=n) continue;
+    seps+=`<line x1="${x(b).toFixed(1)}" y1="${PAD_T}" x2="${x(b).toFixed(1)}" y2="${PAD_T+plotH}" stroke="#1f2937" stroke-width="1"/>`;
+  }
+  // reference price lines (intraday only): VWAP / POC / value area
+  let refs="";
+  const placed=[];                       // keep labels from stacking on top of each other
+  const hline=(v,color,lbl,dash)=>{
+    if(v==null||v<pLo||v>pHi) return "";
+    const y0=yP(v);
+    let ly=y0-2.5;
+    while(placed.some(q=>Math.abs(q-ly)<8)) ly+=8.5;
+    placed.push(ly);
+    return `<line x1="${PAD_L}" y1="${y0.toFixed(1)}" x2="${PAD_L+plotW}" y2="${y0.toFixed(1)}" stroke="${color}" stroke-width="0.8" stroke-dasharray="${dash||"3 3"}" opacity=".75"/>`
+         + `<text x="${(PAD_L+plotW-2).toFixed(1)}" y="${ly.toFixed(1)}" fill="${color}" font-size="8" text-anchor="end">${lbl}</text>`;
+  };
+  refs+=hline(opts.poc,"var(--gold)","POC","4 2");
+  refs+=hline(opts.vwap,"var(--blue)","VWAP","5 3");
+  refs+=hline(opts.vah,"#5b6575","VAH");
+  refs+=hline(opts.val,"#5b6575","VAL");
+
+  // CVD area + line
+  const cvdPath=pathOf(cvd,x,yC);
+  const area=`<polygon points="${PAD_L},${PAD_T+plotH} ${cvdPath} ${(PAD_L+plotW).toFixed(1)},${PAD_T+plotH}"
+      fill="${cCol}" opacity=".10"/>`;
+  const cvdLine=`<polyline points="${cvdPath}" fill="none" stroke="${cCol}" stroke-width="1.6"/>`;
+  const pxLine=`<polyline points="${pathOf(closes,x,yP)}" fill="none" stroke="#dbe3ef" stroke-width="1.2" opacity=".95"/>`;
+
+  // signed volume profile on the right, sharing the price axis
+  let prof="";
+  if(profW){
+    const maxV=Math.max(...opts.profile.map(l=>l.v))||1;
+    const bx=PAD_L+plotW+4;
+    const bh=Math.max(2, plotH/opts.profile.length - 1);
+    for(const lv of opts.profile){
+      const w=Math.max(0.6,(lv.v/maxV)*(profW-16));
+      const yy=yP(lv.p)-bh/2;
+      const col=lv.d>0?"var(--green)":"var(--red)";
+      const op=0.30+0.55*Math.min(1,Math.abs(lv.d)/(lv.v||1));
+      prof+=`<rect x="${bx}" y="${yy.toFixed(1)}" width="${w.toFixed(1)}" height="${bh.toFixed(1)}" fill="${col}" opacity="${op.toFixed(2)}"/>`;
+    }
+    prof+=`<text x="${bx}" y="${CH-4}" fill="#5b6575" font-size="8">vol@price</text>`;
+  }
+  // price scale labels
+  const lab=`<text x="${PAD_L+2}" y="${PAD_T+8}" fill="#5b6575" font-size="8">${pHi.toFixed(2)}</text>
+             <text x="${PAD_L+2}" y="${PAD_T+plotH-2}" fill="#5b6575" font-size="8">${pLo.toFixed(2)}</text>`;
+  return `<svg viewBox="0 0 ${CW} ${CH}" preserveAspectRatio="none">${seps}${refs}${area}${prof}${cvdLine}${pxLine}${lab}</svg>`;
+}
+
+/* Why the score is what it is: one bar per component, height = weight x value.
+   Green above the line pushed the score up, red below pushed it down. */
+function breakdownSVG(parts){
+  const keys=Object.keys(WEIGHTS).filter(k=>parts[k]!=null);
+  if(!keys.length) return "";
+  const W=500,H=46,mid=H/2-3,bw=W/keys.length;
+  let out=`<line x1="0" y1="${mid}" x2="${W}" y2="${mid}" stroke="#243047" stroke-width="1"/>`;
+  keys.forEach((k,i)=>{
+    const w=WEIGHTS[k].w, v=parts[k];
+    const h=Math.abs(v)*w/1.2*(mid-2);
+    const col=v>0?"var(--green)":v<0?"var(--red)":"#3a465c";
+    const x=i*bw+bw*0.18, bwid=bw*0.64;
+    const y=v>0?mid-h:mid;
+    out+=`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bwid.toFixed(1)}" height="${Math.max(1,h).toFixed(1)}" fill="${col}" opacity=".85">
+            <title>${esc(WEIGHTS[k].label)}: ${v>0?"+":""}${v} (weight ${w})</title></rect>`;
+    out+=`<text x="${(i*bw+bw/2).toFixed(1)}" y="${H-1}" fill="#5b6575" font-size="7.5" text-anchor="middle">${esc(WEIGHTS[k].short)}</text>`;
+  });
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${out}</svg>`;
+}
+
+// ---------------------------------------------------------------------------
+// market + ETF panels
+// ---------------------------------------------------------------------------
+function renderMarket(){
+  const m=DATA.market;
+  if(!m||!m.names) return;
+  document.getElementById("mktPanel").style.display="";
+  document.getElementById("mktHead").textContent=
+    `— ${m.names} names, ${DATA.params.dailyMethod.toUpperCase()}-signed over the last 20 sessions`;
+  const net=document.getElementById("mktNet");
+  net.textContent=fusd(m.netUsd);
+  net.className="bignum "+cls(m.netUsd);
+  // breadth meter: -100..+100 with the bar growing out from the centre
+  const br=Math.max(-100,Math.min(100,m.breadth));
+  const half=Math.abs(br)/2;
+  document.getElementById("mktMeter").innerHTML=
+    `<span class="mid"></span><i style="left:${br<0?50-half:50}%;width:${half}%;background:${br<0?"var(--red)":"var(--green)"}"></i>`;
+  const bs=document.getElementById("mktBreadth");
+  bs.textContent=fpct(m.breadth); bs.className=cls(m.breadth);
+  const other=Math.max(0,100-m.pctAcc-m.pctDis);
+  document.getElementById("mktSplit").innerHTML=
+    `<i style="width:${m.pctAcc}%;background:var(--green)"></i>
+     <i style="width:${other}%;background:#2a3343"></i>
+     <i style="width:${m.pctDis}%;background:var(--red)"></i>`;
+  document.getElementById("mktSplitLbl").innerHTML=
+    `<span class="pos">${m.pctAcc}% accumulating</span> · <span class="neg">${m.pctDis}% distributing</span> · avg score <b class="${cls(m.avgScore)}">${m.avgScore>0?"+":""}${m.avgScore}</b>`;
+
+  const maxAbs=Math.max(...m.sectors.map(s=>Math.abs(s.usd)),1);
+  document.getElementById("mktSectors").innerHTML=m.sectors.map(s=>{
+    const w=Math.abs(s.usd)/maxAbs*50;
+    const col=s.usd>0?"var(--green)":"var(--red)";
+    return `<div class="secrow">
+      <span class="nm" title="${esc(s.sector)} · ${s.n} names · ${s.acc} acc / ${s.dis} dis">${esc(s.sector)}</span>
+      <span class="secbar"><span class="mid"></span><i style="left:${s.usd<0?50-w:50}%;width:${w}%;background:${col}"></i></span>
+      <span class="val ${cls(s.usd)}">${fusd(s.usd)}</span>
+      <span class="sc ${cls(s.score)}">${s.score>0?"+":""}${s.score}</span></div>`;
+  }).join("");
+}
+
+function renderETFs(){
+  const etfs=ROWS.filter(r=>r.kind==="etf");
+  if(!etfs.length) return;
+  document.getElementById("etfPanel").style.display="";
+  const groups={};
+  for(const e of etfs) (groups[e.etfGroup||"Other"]=groups[e.etfGroup||"Other"]||[]).push(e);
+  document.getElementById("etfTiles").innerHTML=Object.keys(groups).map(g=>
+    `<div class="etfgrp"><div class="glbl">${esc(g)}</div><div class="tiles">`+
+    groups[g].sort((a,b)=>b.score-a.score).map(e=>
+      `<div class="tile" data-sym="${esc(e.symbol)}" title="${esc(e.name)} — ${esc(e.label)}, net ${fpct(e.netDeltaPct)} of volume">
+         <div class="ts">${esc(e.symbol)}</div>
+         <div class="tv ${cls(e.score)}">${e.score>0?"+":""}${e.score}</div>
+         <div class="tn">${esc(e.name)}</div></div>`).join("")+
+    `</div></div>`).join("");
+  document.querySelectorAll(".tile").forEach(t=>t.onclick=()=>{
+    document.getElementById("fQ").value=t.dataset.sym; cfg.q=t.dataset.sym.toLowerCase();
+    document.getElementById("fKind").value="all"; cfg.kind="all";
+    document.getElementById("fScore").value=0; cfg.score=0;
+    render(); document.getElementById("cards").scrollIntoView({behavior:"smooth",block:"start"});
+  });
+}
+
+// ---------------------------------------------------------------------------
+// cards
+// ---------------------------------------------------------------------------
+function badges(r){
+  const out=[];
+  if(r.divergence<0) out.push(`<span class="b bear" title="Price rose over the window while cumulative delta fell — rallies are being sold into">⚠ rallies sold</span>`);
+  if(r.divergence>0) out.push(`<span class="b bull" title="Price fell over the window while cumulative delta rose — dips are being absorbed">⚑ dips bought</span>`);
+  if(r.absorption>=2) out.push(`<span class="b warn" title="Wyckoff effort-vs-result: ${r.absorption} sessions of heavy volume that produced almost no price movement — size is being worked ${r.absorbDir>0?"at the lows (accumulation)":r.absorbDir<0?"at the highs (distribution)":"in the range"}">◱ absorption ×${r.absorption}${r.absorbDir>0?" ↑":r.absorbDir<0?" ↓":""}</span>`);
+  if(r.agree!=null) out.push(`<span class="b ${r.agree===3?"info":""}" title="How many of the three independent estimators (BVC, CLV, tick rule) agree on the sign of net flow">${r.agree}/3 methods agree</span>`);
+  if(r.vpin!=null && r.vpin>=0.35) out.push(`<span class="b ${r.vpinSigned<0?"bear":"bull"}" title="VPIN — order-flow toxicity. High values mean flow is lopsided: someone is working a large one-way order">☣ VPIN ${r.vpin.toFixed(2)}</span>`);
+  if(r.kind==="etf") out.push(`<span class="b sec">ETF · ${esc(r.etfGroup||"")}</span>`);
+  else out.push(`<span class="b sec">${esc(r.sector)}</span>`);
+  return out.join("");
+}
+
+function cardHTML(r,i){
+  const hasIntra=!!r.intraday;
+  const mode=chartMode.get(r.symbol)||"daily";
+  return `<div class="c ${r.cls}" data-sym="${esc(r.symbol)}">
+    <div class="chead">
+      <span class="rank">#${i+1}</span>
+      <span class="sym">${esc(r.symbol)}</span>
+      <span class="scorepill ${r.cls}" title="Composite flow score, -100 (distribution) to +100 (accumulation)">${r.score>0?"+":""}${r.score} · ${esc(r.label)}</span>
+      <span class="px">${fpx(r.price)}<small class="${cls(r.chg1d)}">${fpct(r.chg1d,2)}</small></span>
+    </div>
+    <div class="nm">${esc(r.name)} · 20d ${fpct(r.chg20d)} · ${fvol(r.avgVol)} sh/day</div>
+    <div class="badges">${badges(r)}
+      <span class="tabs">
+        <button data-m="daily" class="${mode==="daily"?"on":""}">1y daily</button>
+        <button data-m="intra" class="${mode==="intra"?"on":""}" ${hasIntra?"":"disabled"}>5d intraday</button>
+        <button data-m="live" class="${mode==="live"?"on":""}">live</button>
+      </span>
+    </div>
+    <div class="chart" data-sym="${esc(r.symbol)}"><div class="ld">…</div></div>
+    <div class="legend" id="lg-${esc(r.symbol)}"></div>
+    <div class="breakdown">${breakdownSVG(r.parts)}</div>
+    <div class="stats">
+      <div title="Net signed volume as a share of everything that traded"><span>net delta</span><b class="${cls(r.netDeltaPct)}">${fpct(r.netDeltaPct)}</b></div>
+      <div title="Net signed volume in dollars"><span>net $</span><b class="${cls(r.netDeltaUsd)}">${fusd(r.netDeltaUsd)}</b></div>
+      <div title="Chaikin Money Flow, 21 sessions"><span>CMF</span><b class="${cls(r.cmf)}">${r.cmf==null?"–":r.cmf.toFixed(2)}</b></div>
+      <div title="Twiggs Money Flow — CMF rebuilt on true range so overnight gaps don't corrupt it"><span>TMF</span><b class="${cls(r.twiggs)}">${r.twiggs==null?"–":r.twiggs.toFixed(2)}</b></div>
+      <div title="O'Neil up/down volume ratio over 25 sessions; >1.25 is the classic accumulation screen"><span>U/D</span><b class="${cls(r.ud==null?null:r.ud-1)}">${r.ud==null?"–":r.ud.toFixed(2)}</b></div>
+      <div title="Money Flow Index (volume-weighted RSI), 14 sessions"><span>MFI</span><b class="${cls(r.mfi==null?null:r.mfi-50)}">${r.mfi==null?"–":r.mfi.toFixed(0)}</b></div>
+      <div title="IBD-style accumulation / distribution days in the last 25 sessions"><span>acc/dis&nbsp;d</span><b>${r.accDays}/${r.distDays}</b></div>
+      <div title="Average daily dollar volume over 20 sessions"><span>$ vol</span><b>${fvol(r.dollarVol)}</b></div>
+      ${r.intraday?`<div title="Intraday net signed volume over the last 5 sessions"><span>5d intra</span><b class="${cls(r.intraday.netDeltaPct)}">${fpct(r.intraday.netDeltaPct)}</b></div>`:""}
+      ${r.intraday&&r.intraday.vsVwapPct!=null?`<div title="Distance from the 5-day VWAP — the average participant's cost basis"><span>vs&nbsp;VWAP</span><b class="${cls(r.intraday.vsVwapPct)}">${fpct(r.intraday.vsVwapPct,2)}</b></div>`:""}
+      ${r.intraday&&r.intraday.rvol!=null?`<div title="Volume today vs the same clock window on prior sessions"><span>RVOL</span><b class="${cls(r.intraday.rvol-1)}">${r.intraday.rvol.toFixed(2)}x</b></div>`:""}
+    </div>
+  </div>`;
+}
+
+function legendFor(sym,mode,d){
+  const el=document.getElementById("lg-"+sym);
+  if(!el) return;
+  const bits=[`<i style="color:#dbe3ef">— price</i>`,
+              `<i style="color:${(d&&d.cvd&&d.cvd[d.cvd.length-1]>=d.cvd[0])?"var(--green)":"var(--red)"}">— cumulative delta</i>`];
+  if(mode!=="daily"){
+    bits.push(`<i style="color:var(--blue)">-- VWAP</i>`,`<i style="color:var(--gold)">-- POC</i>`,`<i style="color:#5b6575">-- value area</i>`);
+    if(d&&d.live) bits.push(`<i style="color:var(--cyan)">live · ${d.bars} bars</i>`);
+  } else {
+    bits.push(`<i>daily bars, CLV-signed</i>`);
+  }
+  el.innerHTML=bits.join("");
+}
+
+function drawChart(slot){
+  const sym=slot.dataset.sym, r=ROWS.find(x=>x.symbol===sym);
+  if(!r) return;
+  const mode=chartMode.get(sym)||"daily";
+  if(mode==="live"){ drawLive(slot,r); return; }
+  const d = mode==="intra" && r.intraday ? r.intraday : null;
+  if(d){
+    slot.innerHTML=flowChartSVG(d.closes,d.cvd,{profile:d.profile,poc:d.poc,vah:d.vah,val:d.val,
+                                                vwap:d.vwap,dayBreaks:d.dayBreaks});
+    legendFor(sym,"intra",d);
+  } else {
+    slot.innerHTML=flowChartSVG(r.closes,r.cvd,{});
+    legendFor(sym,"daily",{cvd:r.cvd});
+  }
+  slot.dataset.drawn="1";
+}
+
+async function drawLive(slot,r){
+  const sym=r.symbol;
+  let d=liveCache.get(sym);
+  if(!d){
+    slot.innerHTML=`<div class="ld"><span class="spin"></span> &nbsp;fetching live candles…</div>`;
+    try{
+      const resp=await fetch(`/api/chart?symbol=${encodeURIComponent(r.yahoo)}&interval=5m&range=5d`);
+      const j=resp.ok?await resp.json():null;
+      d = (j&&!j.error&&Array.isArray(j.candles)) ? liveFlow(j.candles) : null;
+    }catch(_){ d=null; }
+    if(d) liveCache.set(sym,d);
+  }
+  if(!d){ slot.innerHTML=`<div class="ld">live candles unavailable — /api/chart needs the deployed site</div>`; return; }
+  slot.innerHTML=flowChartSVG(d.closes,d.cvd,{profile:d.profile,poc:d.poc,vah:d.vah,val:d.val,
+                                              vwap:d.vwap,dayBreaks:d.dayBreaks});
+  legendFor(sym,"live",d);
+  slot.dataset.drawn="1";
+}
+
+function setupCharts(){
+  if(observer) observer.disconnect();
+  observer=new IntersectionObserver((entries)=>{
+    for(const e of entries){ if(!e.isIntersecting) continue; observer.unobserve(e.target); drawChart(e.target); }
+  },{rootMargin:"250px"});
+  document.querySelectorAll(".chart[data-sym]").forEach(s=>observer.observe(s));
+  document.querySelectorAll(".c .tabs button").forEach(b=>b.onclick=()=>{
+    const card=b.closest(".c"), sym=card.dataset.sym;
+    chartMode.set(sym,b.dataset.m);
+    card.querySelectorAll(".tabs button").forEach(x=>x.classList.toggle("on",x===b));
+    drawChart(card.querySelector(".chart"));
+  });
+}
+
+// ---------------------------------------------------------------------------
+// filtering
+// ---------------------------------------------------------------------------
+function passes(r){
+  if(cfg.kind!=="all" && r.kind!==cfg.kind) return false;
+  if(cfg.sector && r.sector!==cfg.sector) return false;
+  if(cfg.q){ const q=cfg.q;
+    if(!(r.symbol.toLowerCase().includes(q) || (r.name||"").toLowerCase().includes(q))) return false; }
+  if((r.dollarVol||0) < cfg.dv*1e6) return false;
+  if(cfg.agree && (r.agree||0) < cfg.agree) return false;
+  // "min |score|" always applies; "Show" only chooses which population to draw from
+  if(Math.abs(r.score)<cfg.score) return false;
+  switch(cfg.dir){
+    case "acc": return r.score>0;
+    case "dis": return r.score<0;
+    case "div": return r.divergence!==0;
+    case "divbear": return r.divergence<0;
+    case "divbull": return r.divergence>0;
+    case "absorb": return (r.absorption||0)>=2;
+    case "toxic": return (r.vpin||0)>=0.35;
+  }
+  return true;
+}
+
+const SORTS={
+  abs:(a,b)=>Math.abs(b.score)-Math.abs(a.score),
+  acc:(a,b)=>b.score-a.score,
+  dis:(a,b)=>a.score-b.score,
+  net:(a,b)=>Math.abs(b.netDeltaPct)-Math.abs(a.netDeltaPct),
+  vpin:(a,b)=>(b.vpin||0)-(a.vpin||0),
+  dv:(a,b)=>(b.dollarVol||0)-(a.dollarVol||0),
+  chg:(a,b)=>(b.chg20d||0)-(a.chg20d||0),
+};
+
+function render(){
+  const rows=ROWS.filter(passes).sort(SORTS[cfg.sort]||SORTS.abs);
+  const shown=rows.slice(0,DISPLAY_CAP);
+  const nAcc=rows.filter(r=>r.score>=15).length, nDis=rows.filter(r=>r.score<=-15).length;
+  document.getElementById("funnel").innerHTML=
+    `<span>scanned <b>${DATA.scanned}</b></span><span class="sep">›</span>
+     <span>analysed <b>${DATA.analysed}</b></span><span class="sep">›</span>
+     <span>in snapshot <b>${DATA.count}</b></span><span class="sep">›</span>
+     <span>matching <b>${rows.length}</b>${rows.length>DISPLAY_CAP?` (showing ${DISPLAY_CAP})`:""}</span><span class="sep">›</span>
+     <span class="pos">${nAcc} accumulating</span> <span class="neg">${nDis} distributing</span>`;
+  const wrap=document.getElementById("cards");
+  wrap.innerHTML = shown.length ? shown.map(cardHTML).join("")
+    : `<div class="empty">Nothing matches those filters. Try lowering <b>min |score|</b> or switching <b>Show</b> back to Everything.</div>`;
+  setupCharts();
+}
+
+// ---------------------------------------------------------------------------
+// boot
+// ---------------------------------------------------------------------------
+const SHORT={netDelta:"net",diverge:"div",cmf:"CMF",twiggs:"TMF",ud:"U/D",
+             accdist:"a/d",vpin:"VPIN",obv:"OBV",mfi:"MFI",force:"FI"};
+
+function renderFooter(){
+  const p=DATA.params||{};
+  document.getElementById("foot").innerHTML=
+    `A volume bar is <b>unsigned</b> — it says how much traded, never who was the aggressor. True buy/sell
+     classification needs trade-level data with the bid/ask, so this page <b>estimates</b> the sign from OHLCV bars using
+     three independent methods and shows how many agree:
+     <b>BVC</b> (Bulk Volume Classification — Easley, López de Prado &amp; O'Hara: buy share = Φ(ΔP∕σ)),
+     <b>CLV</b> (where the close sits inside the bar's range) and the <b>tick rule</b>.
+     Daily bars are signed with <code>${esc((p.dailyMethod||"clv").toUpperCase())}</code> because a daily close-to-close move is just the price
+     trend, while the close's position inside the range is genuinely new information; intraday bars use
+     <code>${esc((p.intradayMethod||"bvc").toUpperCase())}</code>, where bar-to-bar change really is an aggression proxy.
+     <br><b>Score</b> = weighted blend of net signed volume, price↔CVD divergence, CMF, Twiggs MF, up/down volume ratio,
+     accumulation/distribution days, VPIN direction, OBV trend, MFI and Force Index — hover any bar in the breakdown strip
+     to see its contribution. The within-bar family is weighted highest on purpose: the close-to-close indicators are
+     largely a volume-weighted echo of the price trend, so weighting them equally would make every uptrend read as
+     "accumulation".
+     <br><b>VPIN</b> buckets the tape by volume rather than by clock time and measures how one-sided each bucket was —
+     high readings mean someone is working a large one-way order.
+     <b>Absorption</b> is Wyckoff effort-vs-result: heavy volume that produces no price movement.
+     <b>vol@price</b> is a signed volume profile — bar length is volume traded at that price, colour is who won there;
+     heavy red shelves are supply.
+     <br>Snapshot refreshes on weekdays via <code>tools/scan_flow.py</code>; the <b>live</b> tab recomputes intraday flow
+     from fresh 5-minute candles in your browser. These are estimates from free bar data, not exchange order flow —
+     see the README for the caveats and the upgrade path. Not investment advice.`;
+}
+
+async function load(){
+  const wrap=document.getElementById("cards");
+  try{
+    DATA=await loadSnapshot("flow_results.json");
+  }catch(e){
+    wrap.innerHTML=`<div class="empty">⚠ ${esc(e.message)}<br><small>The snapshot is produced by
+      <code>python tools/scan_flow.py</code> (scheduled in .github/workflows/scan.yml).</small></div>`;
+    return;
+  }
+  ROWS=DATA.results||[];
+  WEIGHTS={};
+  for(const w of (DATA.weights||[])) WEIGHTS[w.key]={w:w.w,label:w.label,short:SHORT[w.key]||w.key};
+  document.getElementById("asOf").textContent="scan: "+new Date(DATA.asOf).toLocaleString();
+  const sectors=[...new Set(ROWS.map(r=>r.sector))].sort();
+  document.getElementById("fSector").innerHTML=
+    `<option value="">All sectors</option>`+sectors.map(s=>`<option>${esc(s)}</option>`).join("");
+  renderMarket(); renderETFs(); renderFooter(); render();
+}
+
+function bind(){
+  const on=(id,key,fn)=>{ const el=document.getElementById(id);
+    el.oninput=el.onchange=()=>{ cfg[key]=fn(el.value); render(); }; };
+  on("fQ","q",v=>v.trim().toLowerCase());
+  // The specialised populations (divergence / absorption / toxic flow) are the
+  // ones whose scores are often mid-range by nature, so a leftover min-|score|
+  // would silently hide most of them. Drop it to 0 and show that in the field.
+  const dirEl=document.getElementById("fDir"), scEl=document.getElementById("fScore");
+  dirEl.onchange=()=>{
+    cfg.dir=dirEl.value;
+    if(["div","divbear","divbull","absorb","toxic"].includes(cfg.dir)){ cfg.score=0; scEl.value=0; }
+    render();
+  };
+  on("fScore","score",v=>Number(v)||0);
+  on("fAgree","agree",v=>Number(v)||0);
+  on("fKind","kind",v=>v);
+  on("fSector","sector",v=>v);
+  on("fDv","dv",v=>Number(v)||0);
+  on("fSort","sort",v=>v);
+  document.getElementById("btnReload").onclick=()=>{ liveCache.clear(); load(); };
+}
+bind(); load();
+</script>
+</body>
+</html>
