@@ -453,7 +453,11 @@ function renderETFs(){
   document.getElementById("etfPanel").style.display="";
   const groups={};
   for(const e of etfs) (groups[e.etfGroup||"Other"]=groups[e.etfGroup||"Other"]||[]).push(e);
-  document.getElementById("etfTiles").innerHTML=Object.keys(groups).map(g=>
+  // Fixed order — insertion order follows the score sort, which buries the
+  // broad-market tiles people look at first.
+  const ORDER=["Broad","Sector","Theme","Macro"];
+  const keys=[...ORDER.filter(g=>groups[g]), ...Object.keys(groups).filter(g=>!ORDER.includes(g))];
+  document.getElementById("etfTiles").innerHTML=keys.map(g=>
     `<div class="etfgrp"><div class="glbl">${esc(g)}</div><div class="tiles">`+
     groups[g].sort((a,b)=>b.score-a.score).map(e=>
       `<div class="tile" data-sym="${esc(e.symbol)}" title="${esc(e.name)} — ${esc(e.label)}, net ${fpct(e.netDeltaPct)} of volume">
