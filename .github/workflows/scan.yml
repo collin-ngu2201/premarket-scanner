@@ -1,4 +1,4 @@
-name: options-scan
+name: market-scans
 
 # Refresh the options + levels + money-flow snapshots and accrue IV history.
 # Runs on weekdays during US market hours (UTC); also triggerable by hand.
@@ -16,7 +16,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: options-scan
+  group: market-scans
   cancel-in-progress: false
 
 jobs:
