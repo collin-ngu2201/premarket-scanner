@@ -51,8 +51,26 @@ def record(group, name, ok, detail="", warn=False):
 
 def get(url, timeout=40, headers=None):
     req = urllib.request.Request(url, headers=headers or {"User-Agent": UA})
-    with urllib.request.urlopen(req, timeout=timeout) as r:
-        return r.status, r.read()
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            return r.status, r.read(), dict(r.headers)
+    except urllib.error.HTTPError as e:
+        return e.code, e.read(), dict(e.headers)
+
+
+def get_json(url, timeout=40, headers=None):
+    """Fetch and parse, but on failure say WHAT came back instead of just
+    'Expecting value' -- an auth interstitial, a 404 page and a real outage
+    all produce that same useless message otherwise."""
+    st, body, hdrs = get(url, timeout, headers)
+    ctype = (hdrs.get("Content-Type") or hdrs.get("content-type") or "?").split(";")[0]
+    try:
+        return st, json.loads(body), ctype, None
+    except Exception:
+        head = body[:200].decode("utf-8", "replace").replace("\n", " ").strip()
+        why = "Vercel auth wall" if ("sso" in head.lower() or "authentication required" in head.lower()) \
+              else "HTML page" if ctype.startswith("text/html") else "unparseable"
+        return st, None, ctype, f"HTTP {st}, {ctype}, {why}: {head[:90]!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -63,8 +81,8 @@ def check_upstream():
     print("\nUPSTREAM (Yahoo)")
     # daily chart -- the backbone of scan_levels and scan_flow
     try:
-        st, body = get("https://query1.finance.yahoo.com/v8/finance/chart/SPY"
-                       "?range=1y&interval=1d&includePrePost=false")
+        st, body, _ = get("https://query1.finance.yahoo.com/v8/finance/chart/SPY"
+                          "?range=1y&interval=1d&includePrePost=false")
         d = json.loads(body)
         res = d["chart"]["result"][0]
         q = res["indicators"]["quote"][0]
@@ -79,8 +97,8 @@ def check_upstream():
 
     # intraday chart -- stage 2 of the flow scan, and flow.html's live tab
     try:
-        st, body = get("https://query1.finance.yahoo.com/v8/finance/chart/SPY"
-                       "?range=5d&interval=5m&includePrePost=true")
+        st, body, _ = get("https://query1.finance.yahoo.com/v8/finance/chart/SPY"
+                          "?range=5d&interval=5m&includePrePost=true")
         res = json.loads(body)["chart"]["result"][0]
         n = len(res["timestamp"])
         meta = res.get("meta", {})
@@ -106,17 +124,17 @@ def check_upstream():
             except Exception:
                 pass
         cookie = "; ".join(f"{k}={v}" for k, v in jar.items())
-        st, body = get("https://query1.finance.yahoo.com/v1/test/getcrumb",
-                       headers={"User-Agent": UA, "Cookie": cookie, "Accept": "text/plain"})
+        st, body, _ = get("https://query1.finance.yahoo.com/v1/test/getcrumb",
+                          headers={"User-Agent": UA, "Cookie": cookie, "Accept": "text/plain"})
         crumb = body.decode().strip()
         good = bool(crumb) and "<" not in crumb and len(crumb) <= 40
         record("upstream", "v7 cookie+crumb handshake", good,
                f"crumb ok ({len(crumb)} chars), {len(jar)} cookies" if good
                else f"bad crumb: {crumb[:40]!r}")
         if good:
-            st, body = get("https://query1.finance.yahoo.com/v7/finance/quote"
-                           f"?symbols=AAPL,MSFT&crumb={urllib.parse.quote(crumb)}",
-                           headers={"User-Agent": UA, "Cookie": cookie})
+            st, body, _ = get("https://query1.finance.yahoo.com/v7/finance/quote"
+                              f"?symbols=AAPL,MSFT&crumb={urllib.parse.quote(crumb)}",
+                              headers={"User-Agent": UA, "Cookie": cookie})
             qr = json.loads(body).get("quoteResponse", {}).get("result", [])
             record("upstream", "v7 quote endpoint", len(qr) == 2,
                    f"{len(qr)} quotes, AAPL={qr[0].get('regularMarketPrice') if qr else '?'}")
@@ -169,59 +187,90 @@ def check_scanners(quick):
         m2 = re.search(r"PRICE/FLOW DIVERGENCES: (\d+)", out)
         record("scanners", "scan_flow produced a report", m2 is not None,
                f"divergences: {m2.group(1)}" if m2 else "no divergence section")
+    # These two have no --no-write, so the dry-run overwrites the committed
+    # snapshots with a 40-name sample. Nothing commits them, but restore anyway
+    # so "did the checks write anything?" stays a meaningful question.
+    dirty = ["levels_results.json", "scan_results.json", "iv_history.json"]
     run_scanner("scan_levels", ["tools/scan_levels.py", "--limit", "40", "--workers", "8"],
                 40, UNIVERSE_N, must_contain="RESULTS")
     run_scanner("scan_options", ["tools/scan_options.py", "--limit", "25", "--workers", "6"],
                 25, UNIVERSE_N)
+    r = subprocess.run(["git", "checkout", "--"] + dirty, cwd=ROOT,
+                       capture_output=True, text=True)
+    record("scanners", "sample snapshots restored", r.returncode == 0,
+           "working tree left clean" if r.returncode == 0 else r.stderr.strip()[:60])
 
 
 # ---------------------------------------------------------------------------
 # DEPLOYED
 # ---------------------------------------------------------------------------
 
+# Each page must contain its own marker, not merely return 200 with some bytes:
+# a Vercel auth interstitial is a 200 with plenty of bytes and would otherwise
+# sail through every page check while the real site was unreachable.
+PAGE_MARKERS = {
+    "index.html": "Pre-Market Scanner",
+    "flow.html": "Money Flow",
+    "divergence.html": "Divergence",
+    "options.html": "Options Premium",
+    "levels.html": "Key Levels",
+}
+
+
 def check_deployed(site):
     print(f"\nDEPLOYED ({site})")
     base = f"https://{site}"
-    for page in ("index.html", "flow.html", "divergence.html", "options.html", "levels.html"):
+    protected = False
+
+    for page, marker in PAGE_MARKERS.items():
         try:
-            st, body = get(f"{base}/{page}", timeout=30)
-            record("deployed", f"page {page}", st == 200 and len(body) > 2000,
-                   f"{st}, {len(body)//1024}KB")
+            st, body, hdrs = get(f"{base}/{page}", timeout=30)
+            text = body.decode("utf-8", "replace")
+            has = marker in text
+            wall = "authentication required" in text.lower() or "vercel.com/sso" in text.lower()
+            if wall:
+                protected = True
+            record("deployed", f"page {page}", st == 200 and has,
+                   f"{st}, {len(body)//1024}KB"
+                   + ("" if has else f" — marker {marker!r} NOT present"
+                      + (" (Vercel auth wall)" if wall else "")))
         except Exception as e:
             record("deployed", f"page {page}", False, str(e)[:60])
 
-    # /api/chart must return the 6th field (volume) or flow.html's live tab breaks
-    try:
-        st, body = get(f"{base}/api/chart?symbol=AAPL&interval=5m&range=1d", timeout=40)
-        d = json.loads(body)
+    if protected:
+        record("deployed", "deployment protection", False,
+               "site is behind Vercel Authentication — anonymous requests get the SSO "
+               "page, so these checks cannot see the real site (your browser still can)",
+               warn=True)
+
+    # /api/chart must carry the 6th field or flow.html's live tab silently degrades
+    st, d, ctype, err = get_json(f"{base}/api/chart?symbol=AAPL&interval=5m&range=1d", 40)
+    if err:
+        record("deployed", "/api/chart", False, err, warn=protected)
+    else:
         cs = d.get("candles") or []
-        widths = {len(c) for c in cs[:50]}
+        widths = sorted({len(c) for c in cs[:50]})
         has_vol = bool(cs) and all(len(c) >= 6 for c in cs[:50])
         nonzero = sum(1 for c in cs if len(c) > 5 and c[5])
-        record("deployed", "/api/chart responds", st == 200 and len(cs) > 5,
-               f"{len(cs)} candles")
+        record("deployed", "/api/chart responds", len(cs) > 5, f"{len(cs)} candles")
         record("deployed", "/api/chart returns volume (index 5)", has_vol,
-               f"candle widths {sorted(widths)}, {nonzero} with non-zero volume")
-    except Exception as e:
-        record("deployed", "/api/chart", False, str(e)[:60])
+               f"candle widths {widths}, {nonzero} with non-zero volume")
 
-    try:
-        st, body = get(f"{base}/api/quotes?symbols=AAPL,SPY", timeout=45)
-        d = json.loads(body)
+    st, d, ctype, err = get_json(f"{base}/api/quotes?symbols=AAPL,SPY", 45)
+    if err:
+        record("deployed", "/api/quotes", False, err, warn=protected)
+    else:
         qs = d.get("quotes") or []
-        record("deployed", "/api/quotes responds", st == 200 and len(qs) >= 1,
+        record("deployed", "/api/quotes responds", len(qs) >= 1,
                f"{len(qs)} quotes, provider={d.get('provider')}")
-    except Exception as e:
-        record("deployed", "/api/quotes", False, str(e)[:60])
 
     for f in ("flow_results.json", "levels_results.json", "scan_results.json"):
-        try:
-            st, body = get(f"{base}/{f}", timeout=45)
-            d = json.loads(body)
-            record("deployed", f"served {f}", st == 200 and bool(d),
-                   f"{len(body)//1024}KB, asOf={d.get('asOf','?')[:19]}")
-        except Exception as e:
-            record("deployed", f"served {f}", False, str(e)[:60], warn=True)
+        st, d, ctype, err = get_json(f"{base}/{f}", 45)
+        if err:
+            record("deployed", f"served {f}", False, err, warn=True)
+        else:
+            record("deployed", f"served {f}", bool(d),
+                   f"asOf={str(d.get('asOf'))[:19]}, {len(d.get('results') or [])} rows")
 
 
 # ---------------------------------------------------------------------------
