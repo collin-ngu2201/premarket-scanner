@@ -36,7 +36,12 @@ jobs:
       # scans make and the 19:00 run is late enough for it to be meaningful.
       - name: Run money-flow scan
         run: python tools/scan_flow.py --workers 8
+      # always(): a failure in any one scanner must not throw away the snapshots
+      # the others already produced. Adding the flow scan ahead of this step
+      # meant a flow error would have discarded the options and levels results
+      # too. The job still reports failure -- it just commits what succeeded.
       - name: Commit snapshots
+        if: always()
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"

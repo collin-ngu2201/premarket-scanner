@@ -41,12 +41,13 @@ jobs:
           python-version: "3.11"
 
       - name: Preflight
-        if: inputs.mode == 'both' || inputs.mode == 'preflight'
+        if: always() && (inputs.mode == 'both' || inputs.mode == 'preflight')
         run: |
           python tools/preflight.py ${{ inputs.quick && '--quick' || '' }}
 
       - name: Bar audit
-        if: inputs.mode == 'both' || inputs.mode == 'audit'
+        # always(), or a preflight failure silently skips the audit entirely
+        if: always() && (inputs.mode == 'both' || inputs.mode == 'audit')
         run: |
           python tools/audit_bars.py \
             --symbols "${{ inputs.symbols }}" \

@@ -220,28 +220,35 @@ PAGE_MARKERS = {
 def check_deployed(site):
     print(f"\nDEPLOYED ({site})")
     base = f"https://{site}"
-    protected = False
-
+    # Probe first, judge after. Vercel's SSO page is a ~334KB app shell with no
+    # distinctive wording, so the reliable signature is structural: every path
+    # returns HTML of the same size and none contains its own marker.
+    probes = {}
     for page, marker in PAGE_MARKERS.items():
         try:
             st, body, hdrs = get(f"{base}/{page}", timeout=30)
             text = body.decode("utf-8", "replace")
-            has = marker in text
-            wall = "authentication required" in text.lower() or "vercel.com/sso" in text.lower()
-            if wall:
-                protected = True
-            record("deployed", f"page {page}", st == 200 and has,
-                   f"{st}, {len(body)//1024}KB"
-                   + ("" if has else f" — marker {marker!r} NOT present"
-                      + (" (Vercel auth wall)" if wall else "")))
+            probes[page] = (st, len(body), marker in text, text)
         except Exception as e:
-            record("deployed", f"page {page}", False, str(e)[:60])
+            probes[page] = (0, 0, False, str(e))
+
+    sizes = {n for _, n, _, _ in probes.values() if n}
+    none_matched = probes and not any(hit for _, _, hit, _ in probes.values())
+    protected = none_matched and len(sizes) <= 1 and all(
+        "<!doctype html" in t.lower()[:200] for _, _, _, t in probes.values() if t)
 
     if protected:
         record("deployed", "deployment protection", False,
-               "site is behind Vercel Authentication — anonymous requests get the SSO "
-               "page, so these checks cannot see the real site (your browser still can)",
+               "Vercel SSO Protection is ON and there is no custom domain, so every "
+               "*.vercel.app path returns the auth page to anyone not signed in to "
+               "your Vercel account. Your own browser is unaffected; these checks "
+               "cannot see past it, so the results below are inconclusive, not failing.",
                warn=True)
+    for page, (st, n, hit, _) in probes.items():
+        record("deployed", f"page {page}", st == 200 and hit,
+               f"{st}, {n//1024}KB" + ("" if hit else
+               " — auth page, not the real page" if protected else
+               f" — marker missing"), warn=protected)
 
     # /api/chart must carry the 6th field or flow.html's live tab silently degrades
     st, d, ctype, err = get_json(f"{base}/api/chart?symbol=AAPL&interval=5m&range=1d", 40)
@@ -255,6 +262,9 @@ def check_deployed(site):
         record("deployed", "/api/chart responds", len(cs) > 5, f"{len(cs)} candles")
         record("deployed", "/api/chart returns volume (index 5)", has_vol,
                f"candle widths {widths}, {nonzero} with non-zero volume")
+        if not has_vol:
+            record("deployed", "flow.html live tab", False,
+                   "candles lack index 5 — the live tab cannot compute signed volume")
 
     st, d, ctype, err = get_json(f"{base}/api/quotes?symbols=AAPL,SPY", 45)
     if err:
