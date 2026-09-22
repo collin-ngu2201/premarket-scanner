@@ -43,7 +43,15 @@ JOB_BUDGET_MIN = 60               # comfortable ceiling for one Actions job
 RESULTS = []
 
 
+STRICT_DEPLOYED = False
+
+
 def record(group, name, ok, detail="", warn=False):
+    # The scan runs on Actions and commits to git; it never touches the
+    # deployed site. So a site problem is reported, but it does not make the
+    # readiness signal red unless --strict-deployed asks for that.
+    if group == "deployed" and not STRICT_DEPLOYED:
+        warn = True
     RESULTS.append((group, name, "WARN" if (warn and not ok) else ("PASS" if ok else "FAIL"), detail))
     tag = "WARN" if (warn and not ok) else ("PASS" if ok else "FAIL")
     print(f"  [{tag}] {name}" + (f" — {detail}" if detail else ""), flush=True)
@@ -232,10 +240,14 @@ def check_deployed(site):
         except Exception as e:
             probes[page] = (0, 0, False, str(e))
 
-    sizes = {n for _, n, _, _ in probes.values() if n}
-    none_matched = probes and not any(hit for _, _, hit, _ in probes.values())
-    protected = none_matched and len(sizes) <= 1 and all(
-        "<!doctype html" in t.lower()[:200] for _, _, _, t in probes.values() if t)
+    sizes = [n for _, n, _, _ in probes.values() if n]
+    none_matched = bool(probes) and not any(hit for _, _, hit, _ in probes.values())
+    all_html = bool(sizes) and all("<!doctype html" in t.lower()[:200]
+                                   for _, _, _, t in probes.values() if t)
+    # Sizes are near-identical rather than exactly equal -- the shell embeds a
+    # per-request deployment id -- and it is far larger than any error page.
+    uniform = bool(sizes) and (max(sizes) - min(sizes)) < 8192 and min(sizes) > 50_000
+    protected = none_matched and all_html and uniform
 
     if protected:
         record("deployed", "deployment protection", False,
@@ -334,7 +346,11 @@ def main():
     ap.add_argument("--site", default=DEFAULT_SITE)
     ap.add_argument("--quick", action="store_true", help="skip scanner dry-runs")
     ap.add_argument("--skip-deployed", action="store_true")
+    ap.add_argument("--strict-deployed", action="store_true",
+                    help="let deployed-site problems fail the run (default: warn)")
     args = ap.parse_args()
+    global STRICT_DEPLOYED
+    STRICT_DEPLOYED = args.strict_deployed
 
     now = datetime.now(timezone.utc)
     et = now + timedelta(hours=-4)
@@ -361,7 +377,9 @@ def main():
     for g, n, s, d in fails:
         print(f"  FAIL  {g}/{n}: {d}")
     if not fails:
-        print("\nREADY — nothing blocking tonight's run.")
+        print("\nREADY — the scan path (Yahoo → scanners → git) is healthy.")
+        if warns:
+            print("       Warnings above do not block the scan.")
     return 1 if fails else 0
 
 
