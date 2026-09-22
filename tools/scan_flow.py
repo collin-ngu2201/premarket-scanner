@@ -21,7 +21,8 @@ keyless v8 chart endpoint (no crumb/auth) and the Python standard library.
     python tools/scan_flow.py                  # full universe
     python tools/scan_flow.py --etfs-only      # just the ETF panel
 """
-import argparse, json, os, sys, time, urllib.error, urllib.parse, urllib.request
+import argparse, collections, json, os, sys, time
+import urllib.error, urllib.parse, urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 
@@ -112,6 +113,48 @@ def candles(yh, rng, interval, prepost=False):
             "regEnd": (meta.get("currentTradingPeriod") or {}).get("regular", {}).get("end")}
 
 
+def drop_forming_bar(k, now=None):
+    """Remove today's daily bar while the session is still open.
+
+    Yahoo returns a bar for the current day from the opening bell, carrying
+    only the volume traded so far. Scoring it makes the whole read depend on
+    what time the job happened to fire -- and the scheduled runs fire hours
+    late and at a different point in the session every day.
+
+    An audit over 60 names found the partial bar moved the composite score by
+    a median of only ~2 points, but it flipped the LABEL on 12% of names and
+    changed the accumulation/distribution day count on 70% of them. That last
+    one is structural, not noise: acc/dist days compare today's volume against
+    yesterday's FULL volume, so a bar that is 15% formed can essentially never
+    register, and the count silently under-reports.
+
+    So the daily read uses completed sessions only. Today is not lost -- it is
+    exactly what the intraday panel is for, and that panel reads today's
+    5-minute bars directly.
+
+    Returns (candles, dropped_bar_or_None).
+    """
+    if not k["t"]:
+        return k, None
+    off = k.get("gmtoffset") or 0
+    now = time.time() if now is None else now      # injectable for tests
+    if int((k["t"][-1] + off) // 86400) != int((now + off) // 86400):
+        return k, None                       # last bar is an earlier session
+    reg_end = k.get("regEnd")
+    if reg_end and now >= reg_end:
+        return k, None                       # the close has passed: bar is final
+    if not reg_end and (now + off) % 86400 >= 16 * 3600:
+        return k, None                       # no meta: fall back to the local clock
+    last = {key: k[key][-1] for key in ("t", "o", "h", "l", "c", "v")}
+    for key in ("t", "o", "h", "l", "c", "v"):
+        k[key] = k[key][:-1]
+    return k, last
+
+
+def bar_date(ts, gmtoffset):
+    return datetime.fromtimestamp(ts + (gmtoffset or 0), timezone.utc).strftime("%Y-%m-%d")
+
+
 def downsample(series, n):
     """Evenly thin a series to at most n points, always keeping the last one."""
     if not series or len(series) <= n:
@@ -134,7 +177,14 @@ def daily_row(entry):
         return None
     if not k or len(k["c"]) < 60:
         return None
-    if k["c"][-1] < PRICE_FLOOR:
+    # Keep today's live price for DISPLAY before trimming: the flow math wants
+    # completed sessions, but a card showing yesterday's close next to a live
+    # quote would just look broken.
+    live_price, live_prev = k["c"][-1], (k["c"][-2] if len(k["c"]) > 1 else None)
+    k, forming = drop_forming_bar(k)
+    if not k["c"] or len(k["c"]) < 60:
+        return None
+    if live_price < PRICE_FLOOR:
         return None
     r = F.analyze_daily(k["h"], k["l"], k["c"], k["v"])
     if not r:
@@ -147,9 +197,11 @@ def daily_row(entry):
     r["sector"] = entry["sector"]
     r["kind"] = entry.get("kind", "stock")
     r["etfGroup"] = entry.get("etfGroup")
-    r["price"] = round(k["c"][-1], 2)
-    r["chg1d"] = round(100 * (k["c"][-1] / k["c"][-2] - 1), 2) if len(k["c"]) > 1 else None
-    r["chg20d"] = round(100 * (k["c"][-1] / k["c"][-21] - 1), 2) if len(k["c"]) > 21 else None
+    r["price"] = round(live_price, 2)
+    r["chg1d"] = round(100 * (live_price / live_prev - 1), 2) if live_prev else None
+    r["chg20d"] = round(100 * (live_price / k["c"][-20] - 1), 2) if len(k["c"]) > 20 else None
+    r["flowThrough"] = bar_date(k["t"][-1], k["gmtoffset"])
+    r["formingDropped"] = forming is not None
     r["avgVol"] = round(F.mean(k["v"][-20:]) or 0)
     r["cvd"] = downsample(r["cvd"], SPARK_POINTS)
     r["closes"] = downsample(r["closes"], SPARK_POINTS)
@@ -282,8 +334,16 @@ def main():
     got = sum(1 for r in kept if r.get("intraday"))
     print(f"stage 2 done: {got} with intraday flow in {time.time() - t1:.0f}s", flush=True)
 
+    # The scan is deliberate about which sessions it scored, so say so in the
+    # snapshot rather than leaving the dashboard to imply "as of now".
+    through = collections.Counter(r.get("flowThrough") for r in rows if r.get("flowThrough"))
+    flow_through = through.most_common(1)[0][0] if through else None
+    dropped = sum(1 for r in rows if r.get("formingDropped"))
+
     out = {
         "asOf": datetime.now(timezone.utc).isoformat(),
+        "flowThrough": flow_through,
+        "formingBarDropped": dropped,
         "universe": univ["source"],
         "scanned": len(targets), "analysed": len(rows), "count": len(kept),
         "params": {"priceFloor": PRICE_FLOOR, "minDollarVol": MIN_DOLLAR_VOL,
@@ -299,7 +359,9 @@ def main():
         size = os.path.getsize(path) / 1e6
         print(f"\nwrote {args.out} ({size:.2f} MB)", flush=True)
 
-    print(f"\nMARKET: net signed flow ${agg.get('netUsd', 0) / 1e9:+.2f}B  "
+    print(f"\nflow scored through {flow_through} "
+          f"({dropped}/{len(rows)} had today's forming bar dropped)", flush=True)
+    print(f"MARKET: net signed flow ${agg.get('netUsd', 0) / 1e9:+.2f}B  "
           f"breadth {agg.get('breadth', 0):+.1f}  "
           f"{agg.get('pctAcc', 0)}% accumulating / {agg.get('pctDis', 0)}% distributing",
           flush=True)

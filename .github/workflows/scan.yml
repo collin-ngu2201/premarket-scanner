@@ -5,11 +5,20 @@ name: market-scans
 # The commit push auto-deploys on Vercel; the dashboards also read the snapshots
 # straight from GitHub raw, so data is fresh regardless of deploy timing.
 on:
-  # Run during US market hours (15:00 & 19:00 UTC = 11am & 3pm ET) so the
-  # options chain has live bid/ask/OI. Pre-market runs are guarded in the
-  # script (option quotes are 0 then) and won't overwrite good data.
+  # Minute 7, not minute 0. GitHub's cron is best effort and the top of the
+  # hour is its most contended slot: measured over two weeks, the 15:00 slot
+  # started 188-231 min late EVERY time and Mondays silently dropped a run
+  # altogether. An off-peak minute reduces both.
+  #
+  #   15:07 UTC = 11:07 ET  mid-session, so the options chain has live
+  #                         bid/ask/OI (pre-market runs are guarded in the
+  #                         script -- option quotes are 0 then).
+  #   20:07 UTC = 16:07 ET  just past the close, so the levels and money-flow
+  #                         scans see a completed daily bar even if the run
+  #                         fires on time. Any delay only pushes it later,
+  #                         which is the harmless direction.
   schedule:
-    - cron: "0 15,19 * * 1-5"
+    - cron: "7 15,20 * * 1-5"
   workflow_dispatch:
 
 permissions:
@@ -31,9 +40,9 @@ jobs:
         run: python tools/scan_options.py --workers 6
       - name: Run levels scan
         run: python tools/scan_levels.py --workers 8
-      # Money flow works off daily bars, so a mid-session run scores today's
-      # bar while it is still forming. That is the same trade-off the other
-      # scans make and the 19:00 run is late enough for it to be meaningful.
+      # The daily flow read drops today's still-forming bar (see
+      # scan_flow.drop_forming_bar), so this is safe to run at any hour --
+      # the mid-session run simply scores through yesterday's close.
       - name: Run money-flow scan
         run: python tools/scan_flow.py --workers 8
       # always(): a failure in any one scanner must not throw away the snapshots

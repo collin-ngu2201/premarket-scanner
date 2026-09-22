@@ -126,20 +126,64 @@ markers and alert conditions. Pine Editor → paste → Add to chart.
 ### Running it
 
 ```sh
-python tools/test_flow_lib.py          # 104 self-tests, no network needed
+python tools/test_flow_lib.py          # 114 self-tests, no network needed
 python tools/scan_flow.py --limit 60   # quick local validation
 python tools/scan_flow.py              # full universe → flow_results.json
 python tools/scan_flow.py --etfs-only  # just the ETF panel
 ```
+
+### Health checks
+
+Two read-only checks, runnable by hand or from the **bar-audit** workflow
+(Actions → bar-audit → Run workflow). Neither writes a snapshot.
+
+```sh
+python tools/preflight.py      # can tonight's scan run?
+python tools/audit_bars.py     # is the bar data underneath it sound?
+```
+
+`preflight` verifies Yahoo's chart endpoint and the v7 cookie+crumb handshake
+(the most fragile link — unofficial, and it has changed without notice),
+runs each scanner end-to-end at small scale and projects the full-universe
+runtime against the job budget, probes the deployed functions and pages, and
+checks snapshot parse/rows/staleness. Its **exit code reflects the scan path
+only** (Yahoo → scanners → git); deployed-site problems warn but do not fail,
+because the scan never touches Vercel. Use `--strict-deployed` to change that.
+
+`audit_bars` reports whether today's bar is still forming and by how much, how
+many bars the zero-volume filter dropped, and — the headline — each name scored
+**with and without its last bar**, so the cost of a mid-session run is a
+measured number rather than a guess.
+
+### Scheduling
+
+The scan runs weekdays at **15:07 and 20:07 UTC**. Minute 7 rather than minute
+0 is deliberate: GitHub's cron is best effort and the top of the hour is its
+most contended slot — measured over two weeks, the old minute-0 schedule
+started 188–231 minutes late *every time* and dropped a run entirely on
+Mondays. The second slot sits just past the US close so the daily-bar scans
+see a finished session even when the run fires on time; any delay only pushes
+it later, which is harmless.
 
 ### Flow-specific caveats
 
 - **These are estimates, not exchange order flow.** Every number on the page is
   derived from free OHLCV bars. Treat the three-method agreement badge as the
   confidence measure, and treat a 1-of-3 reading as noise.
-- The daily read scores **today's bar while it is still forming** when the
-  scheduled scan runs mid-session. The 19:00 UTC run is late enough to be
-  meaningful; a post-close run would be cleaner.
+- The daily read uses **completed sessions only**. Yahoo serves a bar for the
+  current day from the opening bell carrying only the volume traded so far, so
+  `scan_flow.drop_forming_bar()` excludes it until the close has passed (via
+  Yahoo's `currentTradingPeriod`, so half-day closes are handled). An audit of
+  60 names found the partial bar moved the composite score by a median of only
+  ~2 points but flipped the **label on 12%** of names and changed the
+  **accumulation/distribution day count on 70%** — the latter is structural,
+  since those compare today's volume against yesterday's *full* volume. Today
+  is not lost: it is exactly what the intraday panel reads. The snapshot
+  records the date scored as `flowThrough`, and the dashboard displays it.
+- **Zero-volume bars are dropped** rather than interpolated (a synthesised bar
+  would feed a fabricated buy/sell split into the score). In practice this
+  never fires: the audit found 0 dropped bars and 0 date gaps across ~15,000
+  bars of S&P 1500 and ETF history.
 - Yahoo's intraday history is capped (1m ≈ 7 days, 5m ≈ 60 days), so the
   intraday panel covers 5 sessions.
 - Signed volume is meaningless on illiquid names, so the scan floors at $5

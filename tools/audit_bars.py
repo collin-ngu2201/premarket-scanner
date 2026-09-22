@@ -9,6 +9,8 @@ things can quietly corrupt it:
                 not finished widening. Everything volume-conditioned
                 (accumulation/distribution days, the volume z-score behind
                 absorption, the up/down ratio) then reads today wrong.
+                scan_flow.drop_forming_bar() now excludes it until the close;
+                this audit measures what that exclusion is worth.
   ZERO BARS     scan_flow.candles() drops any bar with null OHLC or zero
                 volume. That is the right call -- a synthesised bar would
                 feed a fabricated buy/sell split straight into the score --
@@ -181,6 +183,9 @@ def main():
         if fp:
             print(f"  today's volume vs 20d median: min {min(fp):.0f}%  "
                   f"median {statistics.median(fp):.0f}%  max {max(fp):.0f}%")
+    print("NOTE: scan_flow now drops today's forming bar, so the 'ex-last' column\n"
+          "      is the value production actually publishes and 'delta' is the error\n"
+          "      that would have been introduced by including it.")
     deltas = [abs(r["scoreDelta"]) for r in ok]
     print(f"|score delta| from the last bar: median {statistics.median(deltas):.1f}  "
           f"p90 {sorted(deltas)[int(len(deltas)*0.9)]:.1f}  max {max(deltas):.1f}")

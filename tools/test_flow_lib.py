@@ -12,6 +12,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import flow_lib as F
+import scan_flow as S
 
 FAILED = []
 PASSED = 0
@@ -487,11 +488,64 @@ def test_analyze_intraday():
           F.analyze_intraday([1] * 5, [1] * 5, [1] * 5, [1] * 5, [1] * 5) is None)
 
 
+# ---------------------------------------------------------------------------
+# 8. the forming-bar guard (tools/scan_flow.py)
+# ---------------------------------------------------------------------------
+
+def test_forming_bar():
+    """Today's daily bar must be scored only once the session has closed.
+
+    Yahoo serves a bar for the current day from the opening bell with only the
+    volume traded so far. Including it makes the read depend on what minute the
+    job fired -- and an audit of 60 names found it flipped the label on 12% and
+    changed the accumulation/distribution day count on 70%.
+    """
+    DAY, OFF = 86400, -4 * 3600            # US Eastern in September
+    def tape(last_ts, reg_end=None):
+        return {"t": [last_ts - DAY, last_ts], "o": [1, 1], "h": [1, 1],
+                "l": [1, 1], "c": [1, 2], "v": [9, 9],
+                "gmtoffset": OFF, "regEnd": reg_end}
+    def at(day, hour):                     # wall-clock UTC for an exchange-local hour
+        return day * DAY + hour * 3600 - OFF
+    day = 20000
+    open_bar = at(day, 9.5)                # Yahoo stamps the daily bar at the open
+
+    k, d = S.drop_forming_bar(tape(open_bar), now=at(day, 11))
+    check("forming bar dropped mid-session", d is not None and len(k["c"]) == 1, str(d))
+    k, d = S.drop_forming_bar(tape(open_bar), now=at(day, 15.9))
+    check("still dropped just before the close", d is not None, str(d))
+    k, d = S.drop_forming_bar(tape(open_bar), now=at(day, 16.1))
+    check("kept once the close has passed", d is None and len(k["c"]) == 2, str(d))
+    k, d = S.drop_forming_bar(tape(open_bar), now=at(day, 20))
+    check("kept in the evening", d is None, str(d))
+    # next morning, before that day's bar exists: yesterday's bar is complete
+    k, d = S.drop_forming_bar(tape(open_bar), now=at(day + 1, 8))
+    check("previous session never dropped", d is None and len(k["c"]) == 2, str(d))
+
+    # regEnd from Yahoo's meta wins over the clock fallback
+    k, d = S.drop_forming_bar(tape(open_bar, reg_end=at(day, 16)), now=at(day, 11))
+    check("regEnd in the future -> dropped", d is not None, str(d))
+    k, d = S.drop_forming_bar(tape(open_bar, reg_end=at(day, 16)), now=at(day, 17))
+    check("regEnd passed -> kept", d is None, str(d))
+    # a half-day close (13:00) is honoured via regEnd even though the clock
+    # fallback would still call the session open
+    k, d = S.drop_forming_bar(tape(open_bar, reg_end=at(day, 13)), now=at(day, 14))
+    check("early close honoured via regEnd", d is None, str(d))
+
+    check("empty series safe",
+          S.drop_forming_bar({"t": [], "o": [], "h": [], "l": [], "c": [], "v": [],
+                              "gmtoffset": OFF, "regEnd": None})[1] is None)
+    # the dropped bar is handed back so the caller can still show a live price
+    k, d = S.drop_forming_bar(tape(open_bar), now=at(day, 11))
+    check("dropped bar returned to the caller",
+          d is not None and d["c"] == 2 and d["t"] == open_bar, str(d))
+
+
 def main():
     for fn in (test_splits, test_agreement, test_cvd_and_divergence, test_vpin,
                test_classics, test_helpers, test_absorption, test_profile,
                test_vwap_and_impact, test_rvol_tod, test_score, test_end_to_end,
-               test_analyze_intraday):
+               test_analyze_intraday, test_forming_bar):
         fn()
     print(f"{PASSED} passed, {len(FAILED)} failed")
     for f in FAILED:

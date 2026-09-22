@@ -420,7 +420,8 @@ function renderMarket(){
   if(!m||!m.names) return;
   document.getElementById("mktPanel").style.display="";
   document.getElementById("mktHead").textContent=
-    `— ${m.names} names, ${DATA.params.dailyMethod.toUpperCase()}-signed over the last 20 sessions`;
+    `— ${m.names} names, ${DATA.params.dailyMethod.toUpperCase()}-signed over the last 20 completed sessions`
+    + (DATA.flowThrough?`, through ${DATA.flowThrough}`:"");
   const net=document.getElementById("mktNet");
   net.textContent=fusd(m.netUsd);
   net.className="bignum "+cls(m.netUsd);
@@ -636,7 +637,8 @@ function render(){
      <span>analysed <b>${DATA.analysed}</b></span><span class="sep">›</span>
      <span>in snapshot <b>${DATA.count}</b></span><span class="sep">›</span>
      <span>matching <b>${rows.length}</b>${rows.length>DISPLAY_CAP?` (showing ${DISPLAY_CAP})`:""}</span><span class="sep">›</span>
-     <span class="pos">${nAcc} accumulating</span> <span class="neg">${nDis} distributing</span>`;
+     <span class="pos">${nAcc} accumulating</span> <span class="neg">${nDis} distributing</span>`
+     + (DATA.flowThrough?` <span class="sep">›</span> <span title="Daily flow is scored on completed sessions only. Today's bar is still forming while the market is open, so it is excluded — today shows up in the 5d intraday tab instead.">daily flow through <b>${esc(DATA.flowThrough)}</b></span>`:"");
   const wrap=document.getElementById("cards");
   wrap.innerHTML = shown.length ? shown.map(cardHTML).join("")
     : `<div class="empty">Nothing matches those filters. Try lowering <b>min |score|</b> or switching <b>Show</b> back to Everything.</div>`;
@@ -670,6 +672,11 @@ function renderFooter(){
      <b>Absorption</b> is Wyckoff effort-vs-result: heavy volume that produces no price movement.
      <b>vol@price</b> is a signed volume profile — bar length is volume traded at that price, colour is who won there;
      heavy red shelves are supply.
+     <br><b>Daily flow is scored on completed sessions only.</b> Yahoo serves a bar for the current day from the
+     opening bell carrying just the volume traded so far; including it made the read depend on what minute the scan
+     happened to run, flipping the label on 12% of names and distorting the accumulation/distribution day count on 70%
+     (those compare today's volume against yesterday's <i>full</i> volume, so a part-formed day can never register).
+     Today is not lost — it is what the <b>5d intraday</b> tab shows, straight from 5-minute bars.
      <br>Snapshot refreshes on weekdays via <code>tools/scan_flow.py</code>; the <b>live</b> tab recomputes intraday flow
      from fresh 5-minute candles in your browser. These are estimates from free bar data, not exchange order flow —
      see the README for the caveats and the upgrade path. Not investment advice.`;
