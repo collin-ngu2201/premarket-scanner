@@ -1,0 +1,30 @@
+name: bar-audit
+
+# On-demand data-quality check for the money-flow scan: is today's daily bar
+# still forming when a scan runs, and what does dropping zero-volume bars
+# actually do to the score? Runs only by hand -- it writes nothing, it reports.
+on:
+  workflow_dispatch:
+    inputs:
+      symbols:
+        description: "Comma-separated symbols (blank = default sample)"
+        required: false
+        default: ""
+      limit:
+        description: "Additional names to sample from universe.json"
+        required: false
+        default: "0"
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Audit bar quality
+        run: |
+          python tools/audit_bars.py \
+            --symbols "${{ inputs.symbols }}" \
+            --limit "${{ inputs.limit }}"
