@@ -1,30 +1,63 @@
 name: bar-audit
 
-# On-demand data-quality check for the money-flow scan: is today's daily bar
-# still forming when a scan runs, and what does dropping zero-volume bars
-# actually do to the score? Runs only by hand -- it writes nothing, it reports.
+# On-demand health checks for the scheduled scan. Read-only: these write no
+# snapshots and commit nothing, so they are safe to run at any time.
+#
+#   preflight  everything tonight's run depends on -- Yahoo's endpoints and
+#              crumb handshake, each scanner end-to-end at small scale with a
+#              projected full-universe runtime, the deployed Vercel functions
+#              and pages, and snapshot integrity.
+#   audit      bar quality: is today's daily bar still forming when a scan
+#              runs, and what does dropping zero-volume bars do to the score?
 on:
   workflow_dispatch:
     inputs:
+      mode:
+        description: "What to run"
+        type: choice
+        options: [both, preflight, audit]
+        default: both
       symbols:
-        description: "Comma-separated symbols (blank = default sample)"
+        description: "audit: comma-separated symbols (blank = default sample)"
         required: false
         default: ""
       limit:
-        description: "Additional names to sample from universe.json"
+        description: "audit: extra names to sample from universe.json"
         required: false
         default: "0"
+      quick:
+        description: "preflight: skip the scanner dry-runs"
+        type: boolean
+        default: false
 
 jobs:
-  audit:
+  check:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Audit bar quality
+
+      - name: Preflight
+        if: inputs.mode == 'both' || inputs.mode == 'preflight'
+        run: |
+          python tools/preflight.py ${{ inputs.quick && '--quick' || '' }}
+
+      - name: Bar audit
+        if: inputs.mode == 'both' || inputs.mode == 'audit'
         run: |
           python tools/audit_bars.py \
             --symbols "${{ inputs.symbols }}" \
             --limit "${{ inputs.limit }}"
+
+      - name: Confirm nothing was written
+        if: always()
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "::warning::checks modified the working tree:"
+            git status --porcelain
+          else
+            echo "working tree clean — checks wrote nothing"
+          fi
