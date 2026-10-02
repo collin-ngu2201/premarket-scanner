@@ -21,6 +21,12 @@ UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/120.0 Safari/537.36")
 TICKER_RE = re.compile(r"[A-Z][A-Z.\-]*")
 
+# Listed on Wikipedia but not served by Yahoo (probe.py reports them as "no quote").
+# Dropped here so a regeneration doesn't bring back a name the scanners can't price.
+#   CWEN.A -- Clearway Energy Class A; Yahoo 404s it and prices the company as CWEN,
+#             which is already in the list as its own row.
+SKIP = {"CWEN.A"}
+
 SOURCES = [
     ("sp500", "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"),
     ("sp400", "https://en.wikipedia.org/wiki/List_of_S%26P_400_companies"),
@@ -102,6 +108,8 @@ def main():
             print(f"  [{idx}] FAILED: {e}")
             rows = []
         for e in rows:
+            if e["symbol"] in SKIP:
+                continue
             merged.setdefault(e["symbol"], e)   # 500 > 400 > 600 precedence
 
     if len(merged) < 600:

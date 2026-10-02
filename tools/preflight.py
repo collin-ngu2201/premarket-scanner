@@ -33,7 +33,20 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/120.0 Safari/537.36")
-DEFAULT_SITE = "premarket-scanner-git-main-collin-s-trading.vercel.app"
+# The production project is premarket-scanner-2201 -- the one the hub links to.
+# Its older sibling, `premarket-scanner`, is behind Vercel SSO protection, so every
+# path there returns the auth page and the deployed checks can say nothing useful.
+DEFAULT_SITE = "premarket-scanner-2201.vercel.app"
+
+# Windows consoles default to cp1252 and choke on the arrows and dashes this
+# report prints. A cosmetic encoding failure must never abort a readiness check,
+# so force UTF-8 here and in the scanner subprocesses below.
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+    except (AttributeError, ValueError):
+        pass
+CHILD_ENV = {**os.environ, "PYTHONUTF8": "1", "PYTHONIOENCODING": "utf-8"}
 
 # Full-universe sizes, used to project runtime from the limited dry-runs.
 UNIVERSE_N = 1506
@@ -158,7 +171,8 @@ def run_scanner(label, args, n_sample, n_full, must_contain=None):
     t0 = time.time()
     try:
         p = subprocess.run([sys.executable] + args, cwd=ROOT, capture_output=True,
-                           text=True, timeout=900)
+                           encoding="utf-8", errors="replace", env=CHILD_ENV,
+                           timeout=900)
     except subprocess.TimeoutExpired:
         record("scanners", label, False, "timed out after 900s"); return None
     el = time.time() - t0
