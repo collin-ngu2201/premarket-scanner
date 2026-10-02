@@ -10,9 +10,15 @@ Pipeline (designed to run on a schedule, e.g. GitHub Actions hourly):
   5. For survivors, pull the options chain, pick the ~30-45 DTE expiration and the
      put nearest 0.30 delta (Black-Scholes delta from Yahoo's per-contract IV),
      and compute the cash-secured-put credit + annualized return on cash.
-  6. IV-rank: until a real IV history accrues, use an "IV vs 1y realized-vol
-     percentile" proxy. The run also appends today's ATM IV to iv_history.json so
-     a true 52-week IV rank takes over once ~40+ days exist.
+  6. IV-rank, published as TWO separate fields so a list never mixes scales:
+       ivRankProxy  IV percentile within the name's own 1y realized-vol range.
+                    Always present, comparable across every name.
+       ivRankReal   true IV rank (current ATM IV vs its own recorded IV range).
+                    Only once MIN_REAL_DAYS of history exist, else null.
+     Today's ATM IV is appended to iv_history.json for EVERY uptrend name that has
+     a live chain -- not just the ones that make the candidate list -- so history
+     builds for the whole pool. (`ivRank` / `ivRankSrc` are kept as the proxy for
+     older readers.) The dashboard picks which one to filter and sort on.
 
 Writes scan_results.json (consumed by the dashboard) and iv_history.json.
 RSI ceiling, IV-rank threshold and price floor are NOT hard-applied here (they're
@@ -37,6 +43,7 @@ MIN_OI = 50                 # option liquidity gate (open interest)
 MAX_SPREAD = 0.60           # max (ask-bid)/mid — rejects untradable wide markets
 MIN_BID = 0.05
 DELTA_BAND = (0.15, 0.45)   # only OTM puts in this delta range qualify as a CSP
+MIN_REAL_DAYS = 40          # recorded IV samples needed before a real IV rank is trusted
 
 # --------------------------------------------------------------------------- auth
 def yahoo_auth():
@@ -165,6 +172,11 @@ def option_metrics(yh, spot, cookie):
         if mid > 0 and ((ask or bid) - bid) / mid > MAX_SPREAD: continue   # spread gate
         puts.append(p)
     if not puts: return None
+    # ATM IV (strike nearest spot) feeds the IV-rank history. It is returned even
+    # when no put qualifies as a CSP below: this name still has a live, liquid
+    # chain today, and its IV belongs in the history.
+    atm = min(puts, key=lambda x: abs(x["strike"] - spot))
+    out = {"atmIV": round(atm.get("impliedVolatility"), 4), "csp": None}
     T = max(dte(target), 1) / 365.0
     # OTM puts whose BS delta sits in the band; pick the one nearest TARGET_DELTA
     best, bestd = None, 1e9
@@ -174,18 +186,16 @@ def option_metrics(yh, spot, cookie):
         if dlt is None or not (DELTA_BAND[0] <= abs(dlt) <= DELTA_BAND[1]): continue
         diff = abs(abs(dlt) - TARGET_DELTA)
         if diff < bestd: best, bestd = (p, dlt), diff
-    if not best: return None
+    if not best: return out
     p, dlt = best
     strike = p["strike"]; bid = p["bid"]; ask = p.get("ask") or bid
     credit = round((bid + ask) / 2, 2)
     days = max(dte(target), 1)
     annpct = round((credit / strike) * (365.0 / days) * 100, 1)
-    # ATM IV (strike nearest spot) for the IV-rank measure
-    atm = min(puts, key=lambda x: abs(x["strike"] - spot))
-    atm_iv = atm.get("impliedVolatility")
-    return {"putStrike": strike, "putDTE": round(days), "putDelta": round(dlt, 2),
-            "putCredit": credit, "annPct": annpct, "atmIV": round(atm_iv, 4),
-            "expiry": datetime.utcfromtimestamp(target).strftime("%Y-%m-%d")}
+    out["csp"] = {"putStrike": strike, "putDTE": round(days), "putDelta": round(dlt, 2),
+                  "putCredit": credit, "annPct": annpct,
+                  "expiry": datetime.utcfromtimestamp(target).strftime("%Y-%m-%d")}
+    return out
 
 # --------------------------------------------------------------------------- bulk quotes
 QFIELDS = ("symbol,shortName,regularMarketPrice,marketCap,regularMarketVolume,"
@@ -259,9 +269,10 @@ def main():
     with ThreadPoolExecutor(max_workers=args.workers) as ex:
         for yh, m in ex.map(_opt, uptrend):
             if m: opts[yh] = m
-    print(f"with tradable ~30-45 DTE put: {len(opts)}", flush=True)
+    n_csp = sum(1 for m in opts.values() if m["csp"])
+    print(f"live chain (IV recorded): {len(opts)} | with tradable ~30-45 DTE put: {n_csp}", flush=True)
 
-    # IV history accrual + iv-rank (real if enough history, else hv-percentile proxy)
+    # IV history accrual (every name with a live chain) + both IV ranks
     hist_path = os.path.join(ROOT, "iv_history.json")
     hist = json.load(open(hist_path)) if os.path.exists(hist_path) else {}
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
@@ -271,28 +282,33 @@ def main():
         d, o = daily[yh], opts[yh]
         q = quotes.get(yh, {})
         iv = o["atmIV"]
-        # accrue
+        # accrue for the whole pool, not just the names that become candidates
         h = hist.setdefault(yh, [])
         if not h or h[-1][0] != today: h.append([today, round(iv, 4)])
         if len(h) > 300: del h[:-300]    # keep ~52 weeks of trading days
+        c = o["csp"]
+        if not c:
+            continue                     # history recorded; no CSP to show
         ivs = [v for _, v in h]
-        if len(ivs) >= 40:
+        # proxy: IV percentile within the name's own 1y realized-vol distribution
+        hv = d["hvSeries"]
+        rank_proxy = round(100 * sum(1 for x in hv if x < iv) / len(hv), 0)
+        # real: where today's IV sits in its own recorded range, once there is enough of it
+        rank_real = None
+        if len(ivs) >= MIN_REAL_DAYS:
             lo, hi = min(ivs), max(ivs)
-            ivrank = round(100 * (iv - lo) / (hi - lo), 0) if hi > lo else 50.0
-            src = "real"
-        else:  # proxy: IV percentile within 1y realized-vol distribution
-            hv = d["hvSeries"]
-            ivrank = round(100 * sum(1 for x in hv if x < iv) / len(hv), 0)
-            src = "hv-proxy"
+            rank_real = round(100 * (iv - lo) / (hi - lo), 0) if hi > lo else 50.0
         # earnings
         ets = q.get("earningsTimestamp") or q.get("earningsTimestampStart")
         days_e = round((ets - now) / 86400.0) if isinstance(ets, (int, float)) else None
         results.append({
             "symbol": meta[yh]["symbol"], "yahoo": yh, "name": meta[yh]["name"],
             "sector": meta[yh]["sector"], "price": d["close"],
-            "ivRank": ivrank, "ivRankSrc": src, "atmIV": round(iv * 100, 1), "hv20": round(d["hv20"] * 100, 1),
-            "annPct": o["annPct"], "putCredit": o["putCredit"], "putStrike": o["putStrike"],
-            "putDTE": o["putDTE"], "putDelta": o["putDelta"], "expiry": o["expiry"],
+            "ivRankProxy": rank_proxy, "ivRankReal": rank_real, "ivDays": len(ivs),
+            "ivRank": rank_proxy, "ivRankSrc": "hv-proxy",    # legacy fields: one consistent scale
+            "atmIV": round(iv * 100, 1), "hv20": round(d["hv20"] * 100, 1),
+            "annPct": c["annPct"], "putCredit": c["putCredit"], "putStrike": c["putStrike"],
+            "putDTE": c["putDTE"], "putDelta": c["putDelta"], "expiry": c["expiry"],
             "rsi14": d["rsi14"], "ema20": d["ema20"], "ema50": d["ema50"], "ema200": d["ema200"],
             "earnDays": days_e, "earnSoon": (days_e is not None and 0 <= days_e <= 30),
             "earnDate": (datetime.utcfromtimestamp(ets).strftime("%Y-%m-%d") if isinstance(ets, (int, float)) else None),
@@ -308,18 +324,28 @@ def main():
 
     results.sort(key=lambda r: r["annPct"], reverse=True)
     json.dump(hist, open(hist_path, "w"))
+    n_real = sum(1 for r in results if r["ivRankReal"] is not None)
+    # How mature the IV history is across the pool (not just the shown candidates)
+    pool_days = sorted(len(hist.get(yh, [])) for yh in opts)
     out = {
         "asOf": datetime.now(timezone.utc).isoformat(),
         "universe": univ["source"], "scanned": len(yahoos),
         "passedPrice": len(priced), "passedTrend": len(uptrend),
         "params": {"priceFloor": PRICE_FLOOR, "targetDTE": TARGET_DTE, "targetDelta": TARGET_DELTA},
+        "ivHistory": {"minDays": MIN_REAL_DAYS, "withReal": n_real,
+                      "coverage": round(n_real / len(results), 2) if results else 0.0,
+                      "poolNames": len(opts),
+                      "poolMedianDays": pool_days[len(pool_days) // 2] if pool_days else 0},
         "count": len(results), "results": results,
     }
     json.dump(out, open(os.path.join(ROOT, "scan_results.json"), "w"), indent=0)
-    print(f"\nRESULTS: {len(results)} candidates -> scan_results.json", flush=True)
+    print(f"\nRESULTS: {len(results)} candidates -> scan_results.json "
+          f"(real IV rank for {n_real}; pool median history {out['ivHistory']['poolMedianDays']}d "
+          f"of {MIN_REAL_DAYS} needed)", flush=True)
     for r in results[:12]:
         e = f"earnings {r['earnDays']}d" if r["earnSoon"] else ""
-        print(f"  {r['symbol']:<6} ann={r['annPct']:>6}%  IVrank={r['ivRank']:>3}({r['ivRankSrc']})  "
+        real = "-" if r["ivRankReal"] is None else int(r["ivRankReal"])
+        print(f"  {r['symbol']:<6} ann={r['annPct']:>6}%  IVrank proxy={int(r['ivRankProxy']):>3} real={real}({r['ivDays']}d)  "
               f"RSI={r['rsi14']:>4}  ${r['price']:<7} put {r['putStrike']}/{r['putDTE']}d d{r['putDelta']}  {e}", flush=True)
 
 if __name__ == "__main__":

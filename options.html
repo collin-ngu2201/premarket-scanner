@@ -50,6 +50,7 @@
   .b{font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;border:1px solid var(--border);color:var(--muted);font-variant-numeric:tabular-nums}
   .b.sec{color:var(--cyan);border-color:rgba(34,211,238,.35)}
   .b.iv{color:var(--purple);border-color:rgba(167,139,250,.4)}
+  .b.iv2{color:var(--muted);border-style:dashed}
   .b.rsi{color:var(--blue);border-color:rgba(59,130,246,.4)}
   .b.up{color:var(--green);border-color:rgba(34,197,94,.4)}
   .b.earn{color:#fff;background:var(--orange);border-color:var(--orange)}
@@ -85,6 +86,12 @@
 
 <main>
   <section class="controls">
+    <div class="fld"><label>IV rank basis</label>
+      <select id="fIvBasis">
+        <option value="proxy">Proxy (all names)</option>
+        <option value="real">Real (names with enough history)</option>
+      </select>
+    </div>
     <div class="fld"><label>Min IV rank %</label><input type="number" id="fIv" value="50" min="0" max="100" step="5"></div>
     <div class="fld"><label>Max RSI</label><input type="number" id="fRsi" value="60" min="0" max="100" step="5"></div>
     <div class="fld"><label>Min price $</label><input type="number" id="fPrice" value="10" min="10" step="5"></div>
@@ -109,14 +116,24 @@
 <footer>
   Cash-secured-put screener: daily uptrend (price&gt;EMA20&gt;EMA50&gt;EMA200, EMA20 rising; broken EMAs excluded),
   ranked by annualized return on a ~30-45 DTE ≈0.30-delta put (Black-Scholes delta from Yahoo IV; liquidity-gated
-  by open interest &amp; spread). <b>IV rank</b> is an IV-vs-1yr-realized-vol percentile <b>proxy</b> until a real
-  52-week IV history accrues (then it switches automatically). Charts: 2y daily candles, last ~6 months, EMA 20/50/200
-  + RSI(14). Scan refreshes hourly on weekdays. Not investment advice.
+  by open interest &amp; spread). <b>IV rank</b> comes in two flavours that are never blended in one list: the
+  <b>proxy</b> (today's IV as a percentile of the name's own 1-year realized volatility; available for every name) and the
+  <b>real</b> rank (today's IV against that name's own recorded IV range, once 40+ days are recorded). Choose the basis
+  in the controls; it defaults to real once most names have it. Charts: 2y daily candles, last ~6 months, EMA 20/50/200
+  + RSI(14). Scan refreshes twice each weekday. Not investment advice.
 </footer>
 
 <script>
 let DATA=null, META={};
-const cfg={iv:50,rsi:60,price:10,earn:30,earnOnly:false,sort:"annPct"};
+const cfg={iv:50,rsi:60,price:10,earn:30,earnOnly:false,sort:"annPct",ivBasis:"proxy",ivBasisUser:false};
+const AUTO_REAL_COVERAGE=0.8;   // default to the real rank once this share of names has it
+
+// Two IV ranks, never blended: proxy (IV percentile vs 1y realized vol, every name)
+// and real (IV vs the name's own recorded range, once enough days exist). Older
+// snapshots only carried a mixed ivRank/ivRankSrc, so fall back to those.
+const ivProxy=(r)=> r.ivRankProxy ?? r.ivRank ?? null;
+const ivReal =(r)=> r.ivRankReal !== undefined ? r.ivRankReal : (r.ivRankSrc==='real' ? r.ivRank : null);
+const ivVal  =(r)=> cfg.ivBasis==='real' ? ivReal(r) : ivProxy(r);
 const chartCache=new Map();
 let observer=null;
 
@@ -195,17 +212,34 @@ function dailyChartSVG(data){
 
 // ---- filtering + render ---------------------------------------------------
 function passes(r){
-  if(r.ivRank<cfg.iv) return false;
+  // A name with no rank on the chosen basis can't be judged against a minimum, so it
+  // is held back whenever a minimum is set (it is not silently scored on another scale).
+  const iv=ivVal(r);
+  if(cfg.iv>0 && (iv==null || iv<cfg.iv)) return false;
   if(r.rsi14>cfg.rsi) return false;
   if(r.price<cfg.price) return false;
   const soon=(r.earnDays!=null && r.earnDays>=0 && r.earnDays<=cfg.earn);
   if(cfg.earnOnly && !soon) return false;
   return true;
 }
+// Primary badge = the chosen basis; the secondary badge shows the other one so the
+// two can be compared without being mixed (proxy is starred).
+function ivBadges(r){
+  const p=ivProxy(r), rl=ivReal(r), days=r.ivDays??0, need=DATA?.ivHistory?.minDays??40;
+  if(cfg.ivBasis==='real'){
+    return `<span class="b iv" title="real IV rank: today's IV vs this name's recorded IV range (${days} days)">IV rank ${rl==null?'–':rl}</span>`
+         + `<span class="b iv2" title="proxy: IV percentile vs 1-year realized volatility">proxy ${p==null?'–':p}*</span>`;
+  }
+  return `<span class="b iv" title="proxy: IV percentile vs 1-year realized volatility, comparable across all names">IV rank ${p==null?'–':p}*</span>`
+       + (rl!=null
+          ? `<span class="b iv2" title="real IV rank from ${days} recorded days">real ${rl}</span>`
+          : `<span class="b iv2" title="real IV rank needs ${need} recorded days">real ${days}/${need}d</span>`);
+}
 function render(){
   if(!DATA) return;
   const rows=DATA.results.filter(passes).sort((a,b)=>{
     if(cfg.sort==="rsi14") return a.rsi14-b.rsi14;        // low RSI first
+    if(cfg.sort==="ivRank") return (ivVal(b)??-1e9)-(ivVal(a)??-1e9);   // on the chosen basis
     return (b[cfg.sort]??-1e9)-(a[cfg.sort]??-1e9);
   });
   const wrap=document.getElementById("cards");
@@ -218,7 +252,7 @@ function render(){
       <div class="nm" title="${r.name}">${r.name}</div>
       <div class="badges">
         <span class="b sec">${r.sector}</span>
-        <span class="b iv">IV rank ${r.ivRank}${r.ivRankSrc==='hv-proxy'?'*':''}</span>
+        ${ivBadges(r)}
         <span class="b rsi">RSI ${r.rsi14}</span>
         <span class="b up">▲ EMA stack</span>
         ${soon?`<span class="b earn">⚠ Earnings ${r.earnDays}d</span>`:``}
@@ -259,16 +293,29 @@ function renderMeta(){
      <span>price≥$${m.params.priceFloor} <b>${m.passedPrice}</b></span><span class="sep">›</span>
      <span>uptrend <b>${m.passedTrend}</b></span><span class="sep">›</span>
      <span>tradable CSP <b>${m.count}</b></span>`;
-  const proxy=m.results.some(r=>r.ivRankSrc==='hv-proxy');
-  document.getElementById("ivNote").textContent = proxy
-    ? "* IV rank shown is the IV-vs-1yr-realized-vol proxy; real 52-week IV rank is still accruing."
-    : "IV rank is the true 52-week rank.";
+  renderIvNote();
+}
+function renderIvNote(){
+  const m=DATA, h=m.ivHistory, el=document.getElementById("ivNote");
+  const withReal=h ? h.withReal : m.results.filter(r=>ivReal(r)!=null).length;
+  const need=h ? h.minDays : 40;
+  const basis = cfg.ivBasis==='real'
+    ? `Basis: <b>real</b> IV rank (names with ≥${need} recorded days only; others are held back while a minimum is set).`
+    : `Basis: <b>proxy</b> (starred *): IV as a percentile of the name's own 1-year realized volatility, comparable across every name.`;
+  const cov = `Real rank available for <b>${withReal}</b> of ${m.count} names`
+            + (h ? `; the pool's median history is ${h.poolMedianDays} of ${need} days.` : `.`);
+  el.innerHTML = `${basis} ${cov}`;
 }
 
 async function load(){
   const wrap=document.getElementById("cards");
   try{
     DATA=await loadSnapshot("scan_results.json");
+    // Default to the real rank once most names have it; never override a manual choice.
+    if(!cfg.ivBasisUser){
+      cfg.ivBasis = (DATA.ivHistory?.coverage ?? 0) >= AUTO_REAL_COVERAGE ? "real" : "proxy";
+      document.getElementById("fIvBasis").value = cfg.ivBasis;
+    }
     renderMeta(); render();
   }catch(e){ wrap.innerHTML=`<div class="empty">⚠ ${e.message}<br><small>The scan snapshot is produced by the scheduled job (tools/scan_options.py).</small></div>`; }
 }
@@ -277,6 +324,9 @@ function bind(){
   const b=(id,key,parse=Number)=>{ const el=document.getElementById(id);
     el.onchange=()=>{ cfg[key]=parse(el.value); render(); }; };
   b("fIv","iv"); b("fRsi","rsi"); b("fPrice","price"); b("fEarn","earn");
+  document.getElementById("fIvBasis").onchange=(e)=>{
+    cfg.ivBasis=e.target.value; cfg.ivBasisUser=true;
+    if(DATA){ renderIvNote(); render(); } };
   document.getElementById("fEarnOnly").onchange=(e)=>{cfg.earnOnly=e.target.checked; render();};
   document.getElementById("fSort").onchange=(e)=>{cfg.sort=e.target.value; render();};
   document.getElementById("btnReload").onclick=load;
