@@ -1,5 +1,5 @@
 {
-"asOf": "2026-11-20T22:14:22.915166+00:00",
+"asOf": "2026-11-24T02:10:11.644561+00:00",
 "universe": "S&P Composite 1500 (S&P 500+400+600, Wikipedia/GICS)",
 "scanned": 1503,
 "params": {
@@ -5367,46 +5367,6 @@
 "sector": "Industrials"
 },
 {
-"yahoo": "CPF",
-"price": 36.74,
-"sma50": 37.28,
-"sma200": 35.87,
-"d200": 0.0237,
-"dSup": 0.0045,
-"dFib": 0.009,
-"supLevel": 36.91,
-"supKind": "swing",
-"supLines": [
-33.36,
-34.8,
-35.0,
-36.91,
-37.28
-],
-"fibLevel": 36.41,
-"fibRatio": 0.618,
-"fibSwing": "rec",
-"fibLines": [
-31.32,
-33.39,
-34.84,
-35.17,
-36.29,
-36.41,
-37.29,
-38.09,
-38.16,
-39.24
-],
-"hi52": 40.99,
-"lo52": 28.69,
-"aboveMA": true,
-"conf3": 3,
-"symbol": "CPF",
-"name": "Central Pacific Financial Corp.",
-"sector": "Financials"
-},
-{
 "yahoo": "CR",
 "price": 202.13,
 "sma50": 203.33,
@@ -6297,20 +6257,21 @@
 },
 {
 "yahoo": "OFG",
-"price": 47.85,
-"sma50": 51.16,
-"sma200": 47.56,
-"d200": 0.006,
-"dSup": 0.0236,
-"dFib": 0.0061,
-"supLevel": 48.98,
-"supKind": "swing",
+"price": 48.69,
+"sma50": 51.08,
+"sma200": 47.6,
+"d200": 0.0223,
+"dSup": 0.006,
+"dFib": 0.0113,
+"supLevel": 48.4,
+"supKind": "consol",
 "supLines": [
 43.92,
 46.25,
+48.4,
 48.98,
 49.75,
-51.16,
+51.08,
 51.26
 ],
 "fibLevel": 48.14,
@@ -11882,44 +11843,6 @@
 "sector": "Real Estate"
 },
 {
-"yahoo": "CNO",
-"price": 53.96,
-"sma50": 55.06,
-"sma200": 49.64,
-"d200": 0.08,
-"dSup": 0.0204,
-"dFib": 0.0017,
-"supLevel": 55.06,
-"supKind": "50MA",
-"supLines": [
-51.78,
-52.82,
-52.83,
-55.06
-],
-"fibLevel": 54.05,
-"fibRatio": 0.382,
-"fibSwing": "rec",
-"fibLines": [
-46.69,
-48.66,
-49.07,
-50.9,
-51.45,
-52.48,
-54.05,
-54.39,
-56.0
-],
-"hi52": 59.15,
-"lo52": 38.99,
-"aboveMA": true,
-"conf3": 2,
-"symbol": "CNO",
-"name": "CNO Financial Group",
-"sector": "Financials"
-},
-{
 "yahoo": "DINO",
 "price": 87.39,
 "sma50": 111.06,
@@ -12610,6 +12533,45 @@
 "conf3": 2,
 "symbol": "WFC",
 "name": "Wells Fargo",
+"sector": "Financials"
+},
+{
+"yahoo": "CPF",
+"price": 37.37,
+"sma50": 37.27,
+"sma200": 35.88,
+"d200": 0.0397,
+"dSup": 0.0026,
+"dFib": 0.0021,
+"supLevel": 37.27,
+"supKind": "50MA",
+"supLines": [
+33.36,
+34.8,
+35.0,
+36.91,
+37.27
+],
+"fibLevel": 37.29,
+"fibRatio": 0.5,
+"fibSwing": "rec",
+"fibLines": [
+33.56,
+34.98,
+35.17,
+36.39,
+36.41,
+37.29,
+38.15,
+38.16,
+39.24
+],
+"hi52": 40.99,
+"lo52": 28.96,
+"aboveMA": true,
+"conf3": 2,
+"symbol": "CPF",
+"name": "Central Pacific Financial Corp.",
 "sector": "Financials"
 },
 {
@@ -13916,7 +13878,8 @@
 "fibRatio": 0.786,
 "fibSwing": "52w",
 "fibLines": [
-58.1
+58.1,
+66.1
 ],
 "hi52": 99.96,
 "lo52": 46.7,
@@ -18032,6 +17995,43 @@
 "sector": "Health Care"
 },
 {
+"yahoo": "CNO",
+"price": 55.73,
+"sma50": 55.06,
+"sma200": 49.7,
+"d200": 0.1082,
+"dSup": 0.012,
+"dFib": 0.0048,
+"supLevel": 55.06,
+"supKind": "50MA",
+"supLines": [
+51.78,
+52.83,
+52.96,
+55.06
+],
+"fibLevel": 56.0,
+"fibRatio": 0.236,
+"fibSwing": "rec",
+"fibLines": [
+48.66,
+49.07,
+50.9,
+51.45,
+52.48,
+54.05,
+54.39,
+56.0
+],
+"hi52": 59.15,
+"lo52": 38.99,
+"aboveMA": true,
+"conf3": 2,
+"symbol": "CNO",
+"name": "CNO Financial Group",
+"sector": "Financials"
+},
+{
 "yahoo": "CVSA",
 "price": 109.13,
 "sma50": 123.71,
@@ -18905,7 +18905,7 @@
 "fibLines": [
 21.55,
 24.88,
-26.86,
+26.85,
 27.22
 ],
 "hi52": 37.13,
@@ -19437,7 +19437,7 @@
 "fibSwing": "52w",
 "fibLines": [
 166.63,
-180.47,
+180.48,
 182.09
 ],
 "hi52": 238.93,
@@ -19883,6 +19883,38 @@
 "sector": "Consumer Discretionary"
 },
 {
+"yahoo": "CAKE",
+"price": 107.95,
+"sma50": 108.58,
+"sma200": 83.55,
+"d200": 0.226,
+"dSup": 0.0058,
+"dFib": 0.0101,
+"supLevel": 108.58,
+"supKind": "50MA",
+"supLines": [
+94.54,
+97.55,
+102.42,
+108.58
+],
+"fibLevel": 106.86,
+"fibRatio": 0.236,
+"fibSwing": "rec",
+"fibLines": [
+98.25,
+102.44,
+106.86
+],
+"hi52": 120.78,
+"lo52": 43.07,
+"aboveMA": true,
+"conf3": 2,
+"symbol": "CAKE",
+"name": "The Cheesecake Factory, Inc.",
+"sector": "Consumer Discretionary"
+},
+{
 "yahoo": "STAA",
 "price": 24.22,
 "sma50": 23.15,
@@ -20027,38 +20059,6 @@
 "conf3": 2,
 "symbol": "WSM",
 "name": "Williams-Sonoma, Inc.",
-"sector": "Consumer Discretionary"
-},
-{
-"yahoo": "CAKE",
-"price": 107.94,
-"sma50": 108.58,
-"sma200": 83.55,
-"d200": 0.226,
-"dSup": 0.0059,
-"dFib": 0.0101,
-"supLevel": 108.58,
-"supKind": "50MA",
-"supLines": [
-94.54,
-97.55,
-102.42,
-108.58
-],
-"fibLevel": 106.86,
-"fibRatio": 0.236,
-"fibSwing": "rec",
-"fibLines": [
-98.25,
-102.44,
-106.86
-],
-"hi52": 120.78,
-"lo52": 43.07,
-"aboveMA": true,
-"conf3": 2,
-"symbol": "CAKE",
-"name": "The Cheesecake Factory, Inc.",
 "sector": "Consumer Discretionary"
 },
 {
@@ -21684,10 +21684,10 @@
 119.54,
 128.27,
 134.41,
-135.48,
+135.46,
 140.55,
-140.81,
-144.55,
+140.79,
+144.54,
 148.14,
 148.29
 ],
