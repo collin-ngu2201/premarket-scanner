@@ -1,5 +1,5 @@
 {
-"asOf": "2026-11-25T23:36:16.586759+00:00",
+"asOf": "2026-11-26T23:49:49.501683+00:00",
 "universe": "S&P Composite 1500 (S&P 500+400+600, Wikipedia/GICS)",
 "scanned": 1503,
 "params": {
@@ -1338,47 +1338,6 @@
 "sector": "Communication Services"
 },
 {
-"yahoo": "ENSG",
-"price": 182.01,
-"sma50": 177.79,
-"sma200": 181.84,
-"d200": 0.0009,
-"dSup": 0.0231,
-"dFib": 0.0122,
-"supLevel": 177.79,
-"supKind": "50MA",
-"supLines": [
-163.07,
-167.83,
-168.43,
-172.37,
-177.79,
-192.47,
-201.19
-],
-"fibLevel": 179.79,
-"fibRatio": 0.5,
-"fibSwing": "52w",
-"fibLines": [
-157.93,
-160.2,
-165.96,
-170.77,
-171.71,
-178.83,
-179.79,
-188.81,
-199.96
-],
-"hi52": 218.0,
-"lo52": 141.58,
-"aboveMA": true,
-"conf3": 3,
-"symbol": "ENSG",
-"name": "Ensign Group",
-"sector": "Health Care"
-},
-{
 "yahoo": "IBM",
 "price": 243.47,
 "sma50": 236.89,
@@ -1695,6 +1654,47 @@
 "symbol": "CFR",
 "name": "Frost Bank",
 "sector": "Financials"
+},
+{
+"yahoo": "ENSG",
+"price": 182.01,
+"sma50": 177.79,
+"sma200": 181.84,
+"d200": 0.001,
+"dSup": 0.0232,
+"dFib": 0.0122,
+"supLevel": 177.79,
+"supKind": "50MA",
+"supLines": [
+163.07,
+167.83,
+168.43,
+172.37,
+177.79,
+192.47,
+201.19
+],
+"fibLevel": 179.79,
+"fibRatio": 0.5,
+"fibSwing": "52w",
+"fibLines": [
+157.93,
+160.2,
+165.96,
+170.77,
+171.71,
+178.83,
+179.79,
+188.81,
+199.96
+],
+"hi52": 218.0,
+"lo52": 141.58,
+"aboveMA": true,
+"conf3": 3,
+"symbol": "ENSG",
+"name": "Ensign Group",
+"sector": "Health Care"
 },
 {
 "yahoo": "RJF",
@@ -9659,9 +9659,9 @@
 "fibLines": [
 99.43,
 114.3,
-121.56,
+121.0,
 124.74,
-131.7
+131.26
 ],
 "hi52": 169.0,
 "lo52": 80.49,
@@ -10125,7 +10125,7 @@
 "fibSwing": "52w",
 "fibLines": [
 75.66,
-79.88,
+79.77,
 85.27
 ],
 "hi52": 125.99,
@@ -12066,7 +12066,7 @@
 "fibSwing": "52w",
 "fibLines": [
 91.8,
-104.69
+104.68
 ],
 "hi52": 201.99,
 "lo52": 61.8,
@@ -12671,6 +12671,39 @@
 "symbol": "GTY",
 "name": "Getty Realty Corp.",
 "sector": "Real Estate"
+},
+{
+"yahoo": "MRTN",
+"price": 11.68,
+"sma50": 12.43,
+"sma200": 14.4,
+"d200": -0.2328,
+"dSup": 0.0287,
+"dFib": 0.0017,
+"supLevel": 11.35,
+"supKind": "swing",
+"supLines": [
+10.94,
+11.35,
+12.1,
+12.43,
+12.72
+],
+"fibLevel": 11.7,
+"fibRatio": 0.786,
+"fibSwing": "52w",
+"fibLines": [
+11.7,
+12.55,
+13.15
+],
+"hi52": 18.48,
+"lo52": 9.85,
+"aboveMA": false,
+"conf3": 2,
+"symbol": "MRTN",
+"name": "Marten Transport, Ltd.",
+"sector": "Industrials"
 },
 {
 "yahoo": "STEP",
@@ -13435,39 +13468,6 @@
 "symbol": "MDU",
 "name": "MDU Resources Group, Inc.",
 "sector": "Utilities"
-},
-{
-"yahoo": "MRTN",
-"price": 11.68,
-"sma50": 12.43,
-"sma200": 14.4,
-"d200": -0.2333,
-"dSup": 0.0283,
-"dFib": 0.0021,
-"supLevel": 11.35,
-"supKind": "swing",
-"supLines": [
-10.94,
-11.35,
-12.1,
-12.43,
-12.72
-],
-"fibLevel": 11.7,
-"fibRatio": 0.786,
-"fibSwing": "52w",
-"fibLines": [
-11.7,
-12.55,
-13.15
-],
-"hi52": 18.48,
-"lo52": 9.85,
-"aboveMA": false,
-"conf3": 2,
-"symbol": "MRTN",
-"name": "Marten Transport, Ltd.",
-"sector": "Industrials"
 },
 {
 "yahoo": "MSEX",
@@ -19029,18 +19029,18 @@
 204.66,
 210.79
 ],
-"fibLevel": 196.49,
+"fibLevel": 196.5,
 "fibRatio": 0.786,
 "fibSwing": "rec",
 "fibLines": [
-196.49,
+196.5,
 205.99,
 211.65,
 212.65,
 219.32
 ],
 "hi52": 311.72,
-"lo52": 184.4,
+"lo52": 184.41,
 "aboveMA": false,
 "conf3": 2,
 "symbol": "OSIS",
@@ -22139,7 +22139,7 @@
 70.82,
 72.54,
 74.47,
-76.26,
+76.25,
 78.12,
 78.87,
 81.48,
